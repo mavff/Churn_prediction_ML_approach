@@ -28,6 +28,7 @@ def montar_abas_relatorio(
     }
     prioridades = [
         "id_cliente", "linha_excel", "linha_excel_removida", "linha_excel_mantida",
+        "chamados_suporte", "situacao", "datas_validas_observadas_90d",
         "historico_dias", "elegivel", "motivo", "churn", "aquisicao",
         "quantidade_excluida", "datas_excluidas", "data_aquisicao_cliente", "data_ocorrencia_churn",
     ]

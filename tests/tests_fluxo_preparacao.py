@@ -29,8 +29,11 @@ class TestFluxoPreparacao(unittest.TestCase):
         self.assertEqual(finais[0]["chamados_excluidos_por_cronologia"].tolist(), [1, 0])
         self.assertNotIn("cancelamento_inconsistente", finais[0].columns)
         self.assertEqual(finais[0]["churn"].tolist(), [0, 1])
+        self.assertEqual(finais[0].loc[0, "chamados_suporte"], 1)
+        self.assertTrue(pd.isna(finais[0].loc[3, "chamados_suporte"]))
+        self.assertNotIn("data_chamado", finais[0].columns)
         abas = relatorios.call_args.args[0]
-        self.assertEqual(list(abas), ["00_resumo", "00_protocolo", "01_duplicatas", "02_datas", "03_chamados", "04_cancelamentos", "05_elegibilidade_alvo"])
+        self.assertEqual(list(abas), ["00_resumo", "00_protocolo", "01_duplicatas", "02_datas", "03_chamados", "04_cancelamentos", "05_elegibilidade_alvo", "06_contagem_chamados"])
         self.assertEqual(len(abas["03_chamados"]), 1)
         self.assertTrue(relatorios.call_args.kwargs["substituir_arquivo"])
         habilitadas = [c for c in bases.call_args_list if len(c.args) < 3 or c.args[2]]

@@ -6,7 +6,7 @@ from preparacao_dados import (
 )
 from preparacao_dados.diagnosticos.datas import (
     identificar_aquisicoes_fora_padrao, identificar_eventos_anteriores_aquisicao,
-    interpretar_datas, identificar_elegibilidade_alvo,
+    interpretar_datas, identificar_elegibilidade_alvo, identificar_contagem_chamados,
 )
 from preparacao_dados.diagnosticos.identificadores import identificar_duplicatas_excedentes
 from preparacao_dados.tratamentos.cancelamentos import (
@@ -15,6 +15,7 @@ from preparacao_dados.tratamentos.cancelamentos import (
 )
 from preparacao_dados.tratamentos.chamados import (
     filtrar_chamados_anteriores_aquisicao, verificar_filtragem_chamados,
+    substituir_datas_por_contagem_chamados, verificar_contagem_chamados,
 )
 from preparacao_dados.tratamentos.datas_aquisicao import (
     padronizar_datas_aquisicao, verificar_padronizacao_datas_aquisicao,
@@ -81,9 +82,15 @@ def main() -> None:
         antes, dados, avaliacao, datas, protocolo, origem,
     )
 
+    # 6. Substituir as listas por quantidade de chamados válidos nos 90 dias históricos.
+    contagem = identificar_contagem_chamados(dados, datas["data_chamado"], chamados, protocolo)
+    antes = dados
+    dados = substituir_datas_por_contagem_chamados(antes, contagem)
+    resultados["06_contagem_chamados"] = verificar_contagem_chamados(antes, dados, contagem, origem)
+
     # Exportar a base atual e o relatório consolidado uma única vez.
     abas = montar_abas_relatorio(resultados, protocolo)
-    exportar_base_excel(dados, tratados / "base_churn_com_alvo.xlsx")
+    exportar_base_excel(dados, tratados / "base_churn_com_contagem_chamados.xlsx")
     exportar_relatorio_excel(abas, pasta / "relatorios" / "diagnostico_preparacao.xlsx", substituir_arquivo=True)
     apresentar_estrutura_base(dados)
 

@@ -1,3 +1,5 @@
 """Interface de importação; as implementações permanecem nos próprios módulos."""
 from .filtrar_chamados_anteriores_aquisicao import filtrar_chamados_anteriores_aquisicao
 from .verificar_filtragem_chamados import verificar_filtragem_chamados
+from .substituir_datas_por_contagem_chamados import substituir_datas_por_contagem_chamados
+from .verificar_contagem_chamados import verificar_contagem_chamados
