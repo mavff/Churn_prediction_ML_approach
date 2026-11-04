@@ -4,36 +4,25 @@ import pandas as pd
 def verificar_remocao_duplicatas(
     antes: pd.DataFrame,
     depois: pd.DataFrame,
-) -> pd.DataFrame:
-    """Verifica a deduplicação e produz os indicadores antes/depois."""
-    copias_antes = int(antes.duplicated().sum())
-    copias_depois = int(depois.duplicated().sum())
-
-    if not depois.columns.equals(antes.columns):
-        raise ValueError("O tratamento alterou as colunas da base.")
-
-    if copias_depois or len(depois) != len(antes) - copias_antes:
-        raise ValueError("A quantidade de registros após a remoção é incorreta.")
-
-    ids_antes = set(antes["id_cliente"].dropna())
-    ids_depois = set(depois["id_cliente"].dropna())
-
-    if ids_antes != ids_depois:
-        raise ValueError("O tratamento alterou o conjunto de identificadores.")
-
-    conteudo_preservado = (
-        depois.index.isin(antes.index).all()
-        and depois.equals(antes.loc[depois.index])
-    )
-
-    if not conteudo_preservado:
+    ocorrencias: pd.DataFrame,
+) -> dict[str, object]:
+    """Confirma a remoção das cópias previstas e a preservação dos demais dados."""
+    indices = ocorrencias["linha_excel_removida"].astype(int) - 2
+    if not depois.equals(antes.drop(index=indices)):
         raise ValueError("Os registros mantidos diferem das linhas da fonte.")
-
-    return pd.DataFrame(
-        [
-            ("Registros", len(antes), len(depois)),
-            ("Identificadores distintos", len(ids_antes), len(ids_depois)),
-            ("Cópias integrais excedentes", copias_antes, copias_depois),
-        ],
-        columns=["indicador", "antes", "depois"],
-    )
+    if depois.duplicated().any():
+        raise ValueError("Ainda há cópias integrais após o tratamento.")
+    if set(antes["id_cliente"].dropna()) != set(depois["id_cliente"].dropna()):
+        raise ValueError("A deduplicação alterou o conjunto de clientes.")
+    resumo = pd.DataFrame([
+        ("Registros", len(antes), len(depois)),
+        ("Identificadores distintos", antes["id_cliente"].nunique(), depois["id_cliente"].nunique()),
+        ("Cópias integrais excedentes", len(ocorrencias), 0),
+        ("Registros sem identificador", int(antes["id_cliente"].astype("string").str.strip().fillna("").eq("").sum()), int(depois["id_cliente"].astype("string").str.strip().fillna("").eq("").sum())),
+    ], columns=["indicador", "antes", "depois"])
+    return {
+        "resumo": resumo,
+        "evidencias": ocorrencias.copy(),
+        "regra": "Manter a primeira ocorrência e remover apenas cópias integrais",
+        "decisao": "Aplicado; valores e identificadores dos registros mantidos preservados",
+    }

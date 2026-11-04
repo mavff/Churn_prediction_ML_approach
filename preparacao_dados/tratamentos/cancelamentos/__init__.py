@@ -1,0 +1,3 @@
+"""Interface de importação; as implementações permanecem nos próprios módulos."""
+from .remover_registros_com_cancelamento_inconsistente import remover_registros_com_cancelamento_inconsistente
+from .verificar_exclusao_cancelamentos_inconsistentes import verificar_exclusao_cancelamentos_inconsistentes

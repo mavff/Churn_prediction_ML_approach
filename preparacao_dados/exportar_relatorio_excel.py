@@ -1,4 +1,7 @@
+from math import ceil
 from pathlib import Path
+
+from openpyxl.styles import Alignment
 
 import pandas as pd
 
@@ -6,13 +9,14 @@ import pandas as pd
 def exportar_relatorio_excel(
     abas: dict[str, pd.DataFrame],
     caminho_relatorio: Path,
+    substituir_arquivo: bool = False,
 ) -> None:
-    """Atualiza as abas informadas, preservando as demais do relatório."""
+    """Exporta as abas; pode reconstruir o relatório completo para retirar abas obsoletas."""
     caminho_relatorio.parent.mkdir(parents=True, exist_ok=True)
 
     opcoes = {"engine": "openpyxl", "mode": "w"}
 
-    if caminho_relatorio.exists():
+    if caminho_relatorio.exists() and not substituir_arquivo:
         opcoes.update(mode="a", if_sheet_exists="replace")
 
     with pd.ExcelWriter(caminho_relatorio, **opcoes) as arquivo:
@@ -33,4 +37,12 @@ def exportar_relatorio_excel(
                     for celula in coluna
                 )
                 letra = coluna[0].column_letter
-                planilha.column_dimensions[letra].width = min(largura + 2, 70)
+                planilha.column_dimensions[letra].width = min(largura + 2, 50)
+
+            for linha in planilha.iter_rows():
+                altura = 1
+                for celula in linha:
+                    celula.alignment = Alignment(vertical="top", wrap_text=True)
+                    largura = planilha.column_dimensions[celula.column_letter].width
+                    altura = max(altura, ceil(len(str(celula.value or "")) / max(largura - 2, 1)))
+                planilha.row_dimensions[linha[0].row].height = 15 * altura
