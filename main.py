@@ -1,134 +1,34 @@
 from pathlib import Path
 
-from preparacao_dados import (
-    apresentar_estrutura_base, definir_protocolo_temporal, exportar_base_excel,
-    exportar_relatorio_excel, ler_base_excel, montar_abas_relatorio,
-    validar_estrutura_visao,
-)
-from preparacao_dados.diagnosticos.datas import (
-    identificar_aquisicoes_fora_padrao, identificar_eventos_anteriores_aquisicao,
-    interpretar_datas, identificar_elegibilidade_alvo, identificar_contagem_chamados,
-    identificar_tempo_cliente_meses,
-)
-from preparacao_dados.diagnosticos.categorias import identificar_categorias_fora_padrao
-from preparacao_dados.diagnosticos.numericos import identificar_violacoes_numericas
-from preparacao_dados.diagnosticos.identificadores import identificar_duplicatas_excedentes
-from preparacao_dados.tratamentos.cancelamentos import (
-    remover_registros_com_cancelamento_inconsistente,
-    verificar_exclusao_cancelamentos_inconsistentes,
-)
-from preparacao_dados.tratamentos.chamados import (
-    filtrar_chamados_anteriores_aquisicao, verificar_filtragem_chamados,
-    substituir_datas_por_contagem_chamados, verificar_contagem_chamados,
-)
-from preparacao_dados.tratamentos.datas_aquisicao import (
-    padronizar_datas_aquisicao, verificar_padronizacao_datas_aquisicao,
-)
-from preparacao_dados.tratamentos.duplicatas import (
-    remover_duplicatas_integrais, verificar_remocao_duplicatas,
-)
-
-from preparacao_dados.tratamentos.elegibilidade import (
-    construir_base_elegivel_com_alvo, verificar_elegibilidade_alvo,
-)
-from preparacao_dados.tratamentos.tempo_cliente import (
-    adicionar_tempo_cliente_meses, verificar_tempo_cliente_meses,
-)
-from preparacao_dados.tratamentos.categorias import (
-    padronizar_categorias, verificar_padronizacao_categorias,
-)
-from preparacao_dados.tratamentos.numericos import (
-    normalizar_valores_numericos, verificar_normalizacao_numerica,
-)
+from preparacao_dados import definir_protocolo_temporal, ler_base_excel
+from preparacao_dados.divisao import definir_protocolo_divisao, dividir_conjuntos
+from preparacao_dados.fluxos import construir_visao_analitica, preparar_conjuntos, exportar_resultados
 
 
 def main() -> None:
     pasta = Path(__file__).resolve().parent
     origem = pasta / "dados" / "base_churn_5000_VF2_aluno.xlsx"
-    tratados = pasta / "dados" / "tratados"
-    intermediarios = tratados / "intermediarios"
-    salvar_intermediarias = False
     protocolo = definir_protocolo_temporal()
-    resultados = {}
+    protocolo_divisao = definir_protocolo_divisao()
+    salvar_intermediarias = False
     dados = ler_base_excel(origem)
 
-    # 1. Identificar as cópias, removê-las e registrar o resultado.
-    copias = identificar_duplicatas_excedentes(dados, origem)
-    # Guarda a entrada da etapa; os tratamentos devolvem cópias sem modificá-la.
-    antes = dados
-    dados = remover_duplicatas_integrais(antes, copias)
-    resultados["01_duplicatas"] = verificar_remocao_duplicatas(antes, dados, copias)
-    exportar_base_excel(dados, intermediarios / "01_sem_duplicatas.xlsx", salvar_intermediarias)
+    # 1. Consolidar a população, o alvo e os atributos temporais.
+    intermediarios = pasta / "dados" / "tratados" / "intermediarios" if salvar_intermediarias else None
+    visao, diagnosticos = construir_visao_analitica(dados, origem, protocolo, intermediarios)
 
-    # 2. Interpretar as datas uma vez e aplicar o de-para da aquisição.
-    # As datas da fonte serão reutilizadas, considerando depois as exclusões identificadas.
-    datas = interpretar_datas(dados)
-    aquisicoes = identificar_aquisicoes_fora_padrao(datas["data_aquisicao_cliente"])
-    antes = dados
-    dados = padronizar_datas_aquisicao(antes, aquisicoes)
-    resultados["02_datas"] = verificar_padronizacao_datas_aquisicao(
-        antes, dados, aquisicoes, datas["data_aquisicao_cliente"], origem,
+    # 2. Isolar os clientes antes dos tratamentos de qualidade.
+    conjuntos, diagnosticos["10_divisao"] = dividir_conjuntos(visao, protocolo_divisao, origem)
+
+    # 3. Aplicar regras fixas em cada conjunto e separar X, y e metadados.
+    preparados, qualidade = preparar_conjuntos(conjuntos, origem)
+    diagnosticos.update(qualidade)
+
+    # 4. Registrar bases e diagnóstico usando os exportadores existentes.
+    exportar_resultados(
+        preparados, diagnosticos, protocolo, protocolo_divisao, pasta,
+        salvar_conjuntos=True, salvar_base_completa=True,
     )
-    exportar_base_excel(dados, intermediarios / "02_datas_padronizadas.xlsx", salvar_intermediarias)
-
-    # 3. Identificar e retirar somente os chamados anteriores à aquisição.
-    chamados = identificar_eventos_anteriores_aquisicao(datas, "data_chamado")
-    antes = dados
-    dados = filtrar_chamados_anteriores_aquisicao(antes, chamados)
-    resultados["03_chamados"] = verificar_filtragem_chamados(
-        antes, dados, chamados, datas["data_chamado"], protocolo, origem,
-    )
-    exportar_base_excel(dados, intermediarios / "03_chamados_consistentes.xlsx", salvar_intermediarias)
-
-    # 4. Identificar cancelamentos inconsistentes e excluir os registros diretamente.
-    cancelamentos = identificar_eventos_anteriores_aquisicao(datas, "data_ocorrencia_churn")
-    antes = dados
-    dados = remover_registros_com_cancelamento_inconsistente(antes, cancelamentos)
-    resultados["04_cancelamentos"] = verificar_exclusao_cancelamentos_inconsistentes(
-        antes, dados, cancelamentos, origem,
-    )
-    exportar_base_excel(dados, intermediarios / "04_cancelamentos_consistentes.xlsx", salvar_intermediarias)
-
-    # 5. Identificar quem participa da análise e construir o alvo de 60 dias.
-    avaliacao = identificar_elegibilidade_alvo(dados, datas, protocolo)
-    antes = dados
-    dados = construir_base_elegivel_com_alvo(antes, avaliacao)
-    resultados["05_elegibilidade_alvo"] = verificar_elegibilidade_alvo(
-        antes, dados, avaliacao, datas, protocolo, origem,
-    )
-
-    # 6. Substituir as listas por quantidade de chamados válidos nos 90 dias históricos.
-    contagem = identificar_contagem_chamados(dados, datas["data_chamado"], chamados, protocolo)
-    antes = dados
-    dados = substituir_datas_por_contagem_chamados(antes, contagem)
-    resultados["06_contagem_chamados"] = verificar_contagem_chamados(antes, dados, contagem, origem)
-
-    # 7. Acrescentar o tempo de cliente em meses completos até o corte.
-    tempo = identificar_tempo_cliente_meses(dados, datas["data_aquisicao_cliente"], protocolo)
-    antes = dados
-    dados = adicionar_tempo_cliente_meses(antes, tempo)
-    resultados["07_tempo_cliente"] = verificar_tempo_cliente_meses(antes, dados, tempo, origem)
-
-    # Esquema, chave e alvo inválidos bloqueiam o fluxo antes das correções dos preditores.
-    validar_estrutura_visao(dados)
-
-    # 8. Aplicar o de-para; categorias desconhecidas ficam ausentes e auditadas.
-    categorias = identificar_categorias_fora_padrao(dados)
-    antes = dados
-    dados = padronizar_categorias(antes, categorias)
-    resultados["08_categorias"] = verificar_padronizacao_categorias(antes, dados, categorias, origem)
-
-    # 9. Normalizar números e isolar inválidos, sem calcular preenchimentos.
-    numericos = identificar_violacoes_numericas(dados)
-    antes = dados
-    dados = normalizar_valores_numericos(antes, numericos)
-    resultados["09_numericos"] = verificar_normalizacao_numerica(antes, dados, numericos, origem)
-
-    # Exportar a base atual e o relatório consolidado uma única vez.
-    abas = montar_abas_relatorio(resultados, protocolo)
-    exportar_base_excel(dados, tratados / "base_churn_com_dicionario_tratado.xlsx")
-    exportar_relatorio_excel(abas, pasta / "relatorios" / "diagnostico_preparacao.xlsx", substituir_arquivo=True)
-    apresentar_estrutura_base(dados)
 
 
 if __name__ == "__main__":

@@ -35,7 +35,7 @@ def montar_abas_relatorio(
         "00_protocolo": parametros,
     }
     prioridades = [
-        "id_cliente", "linha_excel", "linha_excel_removida", "linha_excel_mantida",
+        "id_cliente", "conjunto", "linha_excel", "linha_excel_removida", "linha_excel_mantida",
         "campo", "valor_antes", "valor_depois", "tempo_cliente_meses",
         "chamados_suporte", "situacao", "datas_validas_observadas_90d",
         "historico_dias", "elegivel", "motivo", "churn", "aquisicao",
