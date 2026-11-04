@@ -6,7 +6,7 @@ from preparacao_dados import (
 )
 from preparacao_dados.diagnosticos.datas import (
     identificar_aquisicoes_fora_padrao, identificar_eventos_anteriores_aquisicao,
-    interpretar_datas,
+    interpretar_datas, identificar_elegibilidade_alvo,
 )
 from preparacao_dados.diagnosticos.identificadores import identificar_duplicatas_excedentes
 from preparacao_dados.tratamentos.cancelamentos import (
@@ -21,6 +21,10 @@ from preparacao_dados.tratamentos.datas_aquisicao import (
 )
 from preparacao_dados.tratamentos.duplicatas import (
     remover_duplicatas_integrais, verificar_remocao_duplicatas,
+)
+
+from preparacao_dados.tratamentos.elegibilidade import (
+    construir_base_elegivel_com_alvo, verificar_elegibilidade_alvo,
 )
 
 
@@ -67,10 +71,19 @@ def main() -> None:
     resultados["04_cancelamentos"] = verificar_exclusao_cancelamentos_inconsistentes(
         antes, dados, cancelamentos, origem,
     )
+    exportar_base_excel(dados, intermediarios / "04_cancelamentos_consistentes.xlsx", salvar_intermediarias)
+
+    # 5. Identificar quem participa da análise e construir o alvo de 60 dias.
+    avaliacao = identificar_elegibilidade_alvo(dados, datas, protocolo)
+    antes = dados
+    dados = construir_base_elegivel_com_alvo(antes, avaliacao)
+    resultados["05_elegibilidade_alvo"] = verificar_elegibilidade_alvo(
+        antes, dados, avaliacao, datas, protocolo, origem,
+    )
 
     # Exportar a base atual e o relatório consolidado uma única vez.
     abas = montar_abas_relatorio(resultados, protocolo)
-    exportar_base_excel(dados, tratados / "base_churn_sem_cancelamentos_inconsistentes.xlsx")
+    exportar_base_excel(dados, tratados / "base_churn_com_alvo.xlsx")
     exportar_relatorio_excel(abas, pasta / "relatorios" / "diagnostico_preparacao.xlsx", substituir_arquivo=True)
     apresentar_estrutura_base(dados)
 
