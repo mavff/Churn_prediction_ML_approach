@@ -33,6 +33,7 @@ class TestContagemChamados(unittest.TestCase):
         avaliacao = identificar_contagem_chamados(self.dados, self.datas["data_chamado"], self.excluidos, self.protocolo)
         tratados = substituir_datas_por_contagem_chamados(self.dados, avaliacao)
         resultado = verificar_contagem_chamados(self.dados, tratados, avaliacao, Path("fonte.xlsx"))
+        # Compara repetição válida, lista parcialmente corrigida e eventos fora da janela.
         self.assertEqual(tratados.loc[[0, 6, 8], "chamados_suporte"].tolist(), [3, 1, 0])
         self.assertTrue(tratados.loc[[2, 4], "chamados_suporte"].isna().all())
         self.assertEqual(avaliacao.loc[2, "situacao"], "campo_originalmente_sem_datas")

@@ -12,6 +12,7 @@ def identificar_duplicatas_excedentes(
     repetidos = dados.duplicated(keep="first")
 
     referencias = dados.copy()
+    # Soma 2: o índice começa em zero e a primeira linha do Excel contém o cabeçalho.
     referencias.insert(0, "linha_excel", dados.index + 2)
 
     mantidos = referencias.loc[~repetidos].rename(
@@ -21,6 +22,7 @@ def identificar_duplicatas_excedentes(
         columns={"linha_excel": "linha_excel_removida"}
     )
 
+    # A igualdade em todas as colunas liga cada cópia à primeira ocorrência mantida.
     auditoria = removidos.merge(
         mantidos,
         on=colunas_fonte,

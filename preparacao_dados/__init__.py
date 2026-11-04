@@ -5,3 +5,4 @@ from .exportar_base_excel import exportar_base_excel
 from .exportar_relatorio_excel import exportar_relatorio_excel
 from .leitura_dados import ler_base_excel
 from .montar_abas_relatorio import montar_abas_relatorio
+from .validar_estrutura_visao import validar_estrutura_visao

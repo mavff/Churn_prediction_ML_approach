@@ -3,11 +3,15 @@ from pathlib import Path
 from preparacao_dados import (
     apresentar_estrutura_base, definir_protocolo_temporal, exportar_base_excel,
     exportar_relatorio_excel, ler_base_excel, montar_abas_relatorio,
+    validar_estrutura_visao,
 )
 from preparacao_dados.diagnosticos.datas import (
     identificar_aquisicoes_fora_padrao, identificar_eventos_anteriores_aquisicao,
     interpretar_datas, identificar_elegibilidade_alvo, identificar_contagem_chamados,
+    identificar_tempo_cliente_meses,
 )
+from preparacao_dados.diagnosticos.categorias import identificar_categorias_fora_padrao
+from preparacao_dados.diagnosticos.numericos import identificar_violacoes_numericas
 from preparacao_dados.diagnosticos.identificadores import identificar_duplicatas_excedentes
 from preparacao_dados.tratamentos.cancelamentos import (
     remover_registros_com_cancelamento_inconsistente,
@@ -27,6 +31,15 @@ from preparacao_dados.tratamentos.duplicatas import (
 from preparacao_dados.tratamentos.elegibilidade import (
     construir_base_elegivel_com_alvo, verificar_elegibilidade_alvo,
 )
+from preparacao_dados.tratamentos.tempo_cliente import (
+    adicionar_tempo_cliente_meses, verificar_tempo_cliente_meses,
+)
+from preparacao_dados.tratamentos.categorias import (
+    padronizar_categorias, verificar_padronizacao_categorias,
+)
+from preparacao_dados.tratamentos.numericos import (
+    normalizar_valores_numericos, verificar_normalizacao_numerica,
+)
 
 
 def main() -> None:
@@ -41,12 +54,14 @@ def main() -> None:
 
     # 1. Identificar as cópias, removê-las e registrar o resultado.
     copias = identificar_duplicatas_excedentes(dados, origem)
+    # Guarda a entrada da etapa; os tratamentos devolvem cópias sem modificá-la.
     antes = dados
     dados = remover_duplicatas_integrais(antes, copias)
     resultados["01_duplicatas"] = verificar_remocao_duplicatas(antes, dados, copias)
     exportar_base_excel(dados, intermediarios / "01_sem_duplicatas.xlsx", salvar_intermediarias)
 
     # 2. Interpretar as datas uma vez e aplicar o de-para da aquisição.
+    # As datas da fonte serão reutilizadas, considerando depois as exclusões identificadas.
     datas = interpretar_datas(dados)
     aquisicoes = identificar_aquisicoes_fora_padrao(datas["data_aquisicao_cliente"])
     antes = dados
@@ -88,9 +103,30 @@ def main() -> None:
     dados = substituir_datas_por_contagem_chamados(antes, contagem)
     resultados["06_contagem_chamados"] = verificar_contagem_chamados(antes, dados, contagem, origem)
 
+    # 7. Acrescentar o tempo de cliente em meses completos até o corte.
+    tempo = identificar_tempo_cliente_meses(dados, datas["data_aquisicao_cliente"], protocolo)
+    antes = dados
+    dados = adicionar_tempo_cliente_meses(antes, tempo)
+    resultados["07_tempo_cliente"] = verificar_tempo_cliente_meses(antes, dados, tempo, origem)
+
+    # Esquema, chave e alvo inválidos bloqueiam o fluxo antes das correções dos preditores.
+    validar_estrutura_visao(dados)
+
+    # 8. Aplicar o de-para; categorias desconhecidas ficam ausentes e auditadas.
+    categorias = identificar_categorias_fora_padrao(dados)
+    antes = dados
+    dados = padronizar_categorias(antes, categorias)
+    resultados["08_categorias"] = verificar_padronizacao_categorias(antes, dados, categorias, origem)
+
+    # 9. Normalizar números e isolar inválidos, sem calcular preenchimentos.
+    numericos = identificar_violacoes_numericas(dados)
+    antes = dados
+    dados = normalizar_valores_numericos(antes, numericos)
+    resultados["09_numericos"] = verificar_normalizacao_numerica(antes, dados, numericos, origem)
+
     # Exportar a base atual e o relatório consolidado uma única vez.
     abas = montar_abas_relatorio(resultados, protocolo)
-    exportar_base_excel(dados, tratados / "base_churn_com_contagem_chamados.xlsx")
+    exportar_base_excel(dados, tratados / "base_churn_com_dicionario_tratado.xlsx")
     exportar_relatorio_excel(abas, pasta / "relatorios" / "diagnostico_preparacao.xlsx", substituir_arquivo=True)
     apresentar_estrutura_base(dados)
 

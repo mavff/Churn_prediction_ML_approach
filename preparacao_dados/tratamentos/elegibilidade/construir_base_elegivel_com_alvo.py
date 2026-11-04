@@ -10,6 +10,7 @@ def construir_base_elegivel_com_alvo(
         raise ValueError("A avaliação não corresponde à entrada.")
     if "churn" in dados.columns or "data_corte" in dados.columns:
         raise ValueError("A entrada desta etapa deve estar sem alvo e corte.")
+    # A avaliação completa permanece na auditoria; a base de saída contém só os participantes.
     participantes = avaliacao["elegivel"].eq(True)
     tratados = dados.loc[participantes].copy()
     tratados["data_corte"] = avaliacao.loc[participantes, "data_corte"]

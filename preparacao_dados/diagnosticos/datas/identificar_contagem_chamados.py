@@ -8,10 +8,12 @@ def identificar_contagem_chamados(
     protocolo: dict[str, object],
 ) -> pd.DataFrame:
     """Conta datas válidas da janela e identifica campos sem contagem disponível."""
+    # Retira do conjunto de datas da fonte os eventos já excluídos pela regra cronológica.
     chaves = ["linha_excel", "valor_data"]
     excluidos = pd.MultiIndex.from_frame(datas_chamados[chaves]).isin(
         pd.MultiIndex.from_frame(chamados_excluidos[chaves])
     )
+    # A base atual já passou por exclusões de clientes; conta apenas quem ainda participa.
     atuais = datas_chamados["linha_excel"].isin(dados.index + 2)
     restantes = datas_chamados.loc[atuais & ~excluidos]
     inicio = pd.Timestamp(protocolo["inicio_janela_chamados"])
@@ -21,6 +23,7 @@ def identificar_contagem_chamados(
     fora_janela = restantes.loc[~na_janela].groupby("linha_excel").size()
     linhas = pd.Series(dados.index + 2, index=dados.index)
     observados = linhas.map(contagens).fillna(0).astype("Int64")
+    # Uma lista preenchida fora da janela permite zero; uma lista vazia continua desconhecida.
     vazios = dados["data_chamado"].astype("string").str.strip().fillna("").eq("")
     exclusoes = dados["chamados_excluidos_por_cronologia"]
     situacao = pd.Series("contagem_das_datas_validas", index=dados.index)

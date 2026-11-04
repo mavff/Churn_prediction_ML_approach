@@ -16,6 +16,7 @@ def exportar_relatorio_excel(
 
     opcoes = {"engine": "openpyxl", "mode": "w"}
 
+    # No fluxo completo, reconstruir o arquivo impede o acúmulo de abas de versões anteriores.
     if caminho_relatorio.exists() and not substituir_arquivo:
         opcoes.update(mode="a", if_sheet_exists="replace")
 
@@ -39,6 +40,7 @@ def exportar_relatorio_excel(
                 letra = coluna[0].column_letter
                 planilha.column_dimensions[letra].width = min(largura + 2, 50)
 
+            # Ajusta a altura para que listas e justificativas possam ser lidas com quebra de texto.
             for linha in planilha.iter_rows():
                 altura = 1
                 for celula in linha:
