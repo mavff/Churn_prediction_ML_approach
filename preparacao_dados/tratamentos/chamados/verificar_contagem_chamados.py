@@ -20,6 +20,7 @@ def verificar_contagem_chamados(
         raise ValueError("Chamados devem ser inteiros não negativos ou ausentes.")
     if not quantidade.equals(avaliacao["chamados_suporte"]):
         raise ValueError("A contagem exportada difere da identificação.")
+    # Impede que a conversão trate uma lista vazia como ausência comprovada de chamados.
     vazios = antes["data_chamado"].astype("string").str.strip().fillna("").eq("")
     if not quantidade.isna().eq(vazios).all():
         raise ValueError("As listas vazias devem continuar ausentes antes da imputação.")

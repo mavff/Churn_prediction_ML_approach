@@ -12,6 +12,7 @@ def identificar_eventos_anteriores_aquisicao(
         "valor_original": "aquisicao_original",
         "data_interpretada": "data_aquisicao_interpretada",
     })
+    # Usa a linha da fonte para comparar cada evento com a aquisição do mesmo cliente.
     eventos = datas_por_campo[campo].merge(
         referencias, on="linha_excel", how="left", validate="many_to_one", sort=False,
     )

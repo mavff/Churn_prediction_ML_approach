@@ -16,6 +16,7 @@ def verificar_padronizacao_datas_aquisicao(
         raise ValueError("A padronização alterou linhas, índices ou colunas.")
     if not antes.drop(columns=campo).equals(depois.drop(columns=campo)):
         raise ValueError("A padronização alterou outro campo.")
+    # Confere a mesma data em outra representação, reutilizando a interpretação da fonte.
     esperado = aquisicoes["data_interpretada"].dt.strftime("%d/%m/%Y").reindex(antes.index)
     if esperado.isna().any() or not depois[campo].astype("string").eq(esperado).all():
         raise ValueError("A padronização mudou uma data ou deixou aquisição sem referência.")

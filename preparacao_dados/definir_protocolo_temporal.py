@@ -11,7 +11,9 @@ def definir_protocolo_temporal(
         raise ValueError("Confira as datas do protocolo e a convenção de cobertura.")
     return {
         "data_corte": data_corte,
+        # A janela histórica inclui o próprio dia de corte entre os 90 dias.
         "inicio_janela_chamados": data_corte - timedelta(days=89),
+        # O alvo observa os 60 dias seguintes; eventos no corte já pertencem ao passado.
         "inicio_janela_alvo": data_corte + timedelta(days=1),
         "fim_janela_alvo": data_corte + timedelta(days=60),
         "fim_acompanhamento": fim_acompanhamento,

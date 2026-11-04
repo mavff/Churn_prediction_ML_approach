@@ -24,14 +24,17 @@ def identificar_elegibilidade_alvo(
         (historico.lt(protocolo["historico_minimo_dias"]), "historico_inferior_ao_minimo"),
         (cancelamento.gt(acompanhamento), "evento_apos_acompanhamento"),
     ]
+    # Registra o primeiro impedimento aplicável, mantendo uma justificativa por cliente.
     for condicao, justificativa in impedimentos:
         motivo.loc[motivo.eq("elegivel") & condicao.fillna(False)] = justificativa
     evento = cancelamento.gt(corte) & cancelamento.le(fim_alvo) & cancelamento.le(acompanhamento)
+    # Sem cobertura, a ausência de evento não comprova permanência durante toda a janela.
     if not protocolo["cobertura_completa"] or acompanhamento < fim_alvo:
         motivo.loc[motivo.eq("elegivel") & ~evento] = (
             "acompanhamento_insuficiente" if acompanhamento < fim_alvo else "cobertura_nao_assumida"
         )
     elegivel = motivo.eq("elegivel")
+    # Clientes fora da população ficam sem alvo na auditoria; somente os elegíveis recebem 0 ou 1.
     alvo = pd.Series(pd.NA, index=dados.index, dtype="Int64")
     alvo.loc[elegivel] = evento.loc[elegivel].astype("int64")
     fundamento = pd.Series("Alvo não atribuído; fora da população desta análise", index=dados.index)

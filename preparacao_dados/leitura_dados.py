@@ -19,6 +19,7 @@ def ler_base_excel(caminho_base: Path) -> pd.DataFrame:
                 "É necessário escolher qual aba será utilizada."
             )
 
+        # Preserva marcadores textuais e vazios para tratamento explícito nas etapas seguintes.
         return pd.read_excel(
             arquivo,
             sheet_name=abas[0],

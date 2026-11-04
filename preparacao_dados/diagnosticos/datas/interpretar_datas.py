@@ -3,6 +3,7 @@ import pandas as pd
 
 def interpretar_datas(dados: pd.DataFrame) -> dict[str, pd.DataFrame]:
     """Interpreta as datas uma vez, preservando valores e linhas da fonte."""
+    # O índice original vincula registros e eventos às linhas da fonte, mesmo após exclusões.
     if not dados.index.is_unique or not pd.api.types.is_integer_dtype(dados.index.dtype):
         raise ValueError("Preserve os índices inteiros únicos da leitura original.")
     ids = dados["id_cliente"].astype("string")
@@ -16,10 +17,12 @@ def interpretar_datas(dados: pd.DataFrame) -> dict[str, pd.DataFrame]:
         linhas.insert(0, "linha_excel", linhas.index + 2)
         linhas = linhas.rename(columns={campo: "valor_original"})
         linhas["valor_data"] = valores.loc[presentes]
+        # Cada data da lista vira um evento; a referência à linha original se repete.
         if campo == "data_chamado":
             linhas["valor_data"] = linhas["valor_data"].str.split(",")
             linhas = linhas.explode("valor_data")
         linhas["valor_data"] = linhas["valor_data"].str.strip()
+        # Tenta os dois formatos aprovados; valores inválidos são rejeitados logo abaixo.
         linhas["data_interpretada"] = pd.to_datetime(
             linhas["valor_data"], format="%d/%m/%Y", errors="coerce"
         ).fillna(pd.to_datetime(linhas["valor_data"], format="%Y-%m-%d", errors="coerce"))

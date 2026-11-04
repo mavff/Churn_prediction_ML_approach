@@ -20,6 +20,7 @@ def verificar_exclusao_cancelamentos_inconsistentes(
     originais = antes.loc[indices, "data_ocorrencia_churn"].astype("string").tolist()
     if originais != ocorrencias["valor_original"].astype("string").tolist():
         raise ValueError("As datas inconsistentes mudaram depois da identificação.")
+    # Guarda o cadastro completo excluído, permitindo rastrear a decisão sem alterar a fonte.
     auditoria = antes.loc[indices].copy()
     auditoria.insert(0, "linha_excel", indices.to_numpy() + 2)
     auditoria.insert(0, "arquivo_origem", caminho_origem.name)

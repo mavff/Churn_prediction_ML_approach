@@ -30,6 +30,7 @@ def verificar_filtragem_chamados(
         raise ValueError("Foram modificados clientes sem chamados inconsistentes.")
     for linha, grupo in ocorrencias.groupby("linha_excel", sort=False):
         indice = int(linha) - 2
+        # Counter preserva multiplicidades: duas ocorrências no mesmo dia não equivalem a uma.
         originais = Counter(p.strip() for p in str(antes.at[indice, campo]).split(",") if p.strip())
         finais = Counter(p.strip() for p in str(depois.at[indice, campo]).split(",") if p.strip())
         if finais - originais or originais - finais != Counter(grupo["valor_data"]):
@@ -43,6 +44,7 @@ def verificar_filtragem_chamados(
     datas_antes = datas_chamados["data_interpretada"]
     vazios_antes = antes[campo].astype("string").str.strip().fillna("").eq("")
     vazios_depois = depois[campo].astype("string").str.strip().fillna("").eq("")
+    # Reúne todas as datas excluídas em uma evidência por cliente para facilitar a leitura.
     auditoria = ocorrencias.groupby("linha_excel", sort=False).agg(
         id_cliente=("id_cliente", "first"),
         datas_excluidas=("valor_data", ", ".join),

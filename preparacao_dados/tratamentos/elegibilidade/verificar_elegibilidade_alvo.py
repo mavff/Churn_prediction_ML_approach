@@ -31,6 +31,7 @@ def verificar_elegibilidade_alvo(
     if (not (corte - aquisicao).dt.days.ge(protocolo["historico_minimo_dias"]).all()
             or cancelamento.le(corte).any() or cancelamento.gt(acompanhamento).any()):
         raise ValueError("Há participantes que violam as condições temporais.")
+    # Reconfere os rótulos contra a janela temporal para detectar um alvo calculado incorretamente.
     evento = cancelamento.gt(corte) & cancelamento.le(fim_alvo)
     if not depois["churn"].eq(1).eq(evento).all():
         raise ValueError("O rótulo não corresponde à janela de cancelamento.")

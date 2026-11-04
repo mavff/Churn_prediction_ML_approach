@@ -29,6 +29,7 @@ def filtrar_chamados_anteriores_aquisicao(
 
         valor_atual = tratados.at[indice, "data_chamado"]
         partes = [p.strip() for p in str(valor_atual).split(",") if p.strip()]
+        # Retira as datas inconsistentes e mantém a ordem e as repetições dos eventos válidos.
         excluir = set(grupo["valor_data"])
         restantes = [p for p in partes if p not in excluir]
         quantidade = len(partes) - len(restantes)
