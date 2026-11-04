@@ -40,6 +40,7 @@ A sequência está explícita em `main.py`. Cada bloco identifica os casos, tran
 | 3 — chamados | Excluir 52 datas anteriores à aquisição, distribuídas entre 33 clientes; preservar os chamados válidos | 5.000 |
 | 4 — cancelamentos | Excluir diretamente os dez registros com cancelamento anterior à aquisição, conforme decisão do projeto | 4.990 |
 | 5 — elegibilidade e alvo | Selecionar clientes com pelo menos 60 dias de histórico, ativos no corte e com desfecho conhecido; criar `churn` | 4.976 |
+| 6 — contagem de chamados | Substituir as listas pela quantidade de datas válidas nos 90 dias históricos; preservar ausências para a imputação posterior | 4.976 |
 
 A exclusão de clientes na etapa 4 é específica para esses casos aprovados. A Aula 2, pp. 9–10 do PDF, alerta contra descarte indiscriminado de ausências e discute o risco de erro no alvo. Uma inconsistência cronológica não prova que todos os demais campos do cadastro estejam errados. Os dez registros completos continuam na fonte e na auditoria.
 
@@ -78,9 +79,21 @@ Quatorze clientes da fonte tratada têm menos de 60 dias de histórico. Eles fic
 
 O código impede criar rótulos zero quando a cobertura não é assumida ou quando o acompanhamento informado não cobre a janela inteira. Eventos positivos já observados podem ser conhecidos mesmo sem acompanhamento completo.
 
+## Contagem numérica dos chamados
+
+A Aula 1, p. 7 do PDF, define `chamados_suporte` como o volume de chamados abertos em 90 dias. A etapa 6 conta as ocorrências válidas entre 24/06 e 21/09/2026, inclusive. Chamados futuros e datas anteriores à aquisição já excluídas não entram no cálculo. Duas ocorrências no mesmo dia são contadas separadamente; a fonte não fornece ID de chamado para concluir que sejam duplicatas.
+
+A coluna `data_chamado` é substituída por `chamados_suporte`, com tipo `Int64` e sem alterar os demais campos. As listas usadas na conversão ficam na auditoria `06_contagem_chamados` e continuam disponíveis na fonte.
+
+Na base atual, há 3.917 contagens numéricas e 1.059 campos sem lista. Estes permanecem ausentes: 1.045 já não tinham datas na entrada e 14 ficaram vazios quando datas anteriores à aquisição foram removidas. As listas que ainda contêm datas válidas são contadas, preservando o indicador de exclusão anterior. Portanto, o atributo mede os registros válidos disponíveis, não reconstrói eventos sem data confiável.
+
+Uma lista vazia não é preenchida automaticamente com zero nesta etapa. Já uma lista preenchida cujos eventos estão todos fora dos 90 dias tem contagem histórica zero. Os dois casos são distintos.
+
+A Aula 2, pp. 9 e 16 do PDF, orienta aprender mediana/moda somente no treino. A separação de avaliação e a imputação serão implementadas depois; esta conversão não aprende estatísticas nem preenche os ausentes. Valores imputados serão estimativas identificáveis, não novos eventos observados.
+
 ## O que mudou nas colunas
 
-As dez colunas originais são preservadas nos registros mantidos, exceto as células cujo tratamento foi aprovado. A base atual acrescenta:
+As informações originais permanecem na fonte e na auditoria. Na base atual, `data_chamado` foi substituída por `chamados_suporte`, e os demais campos dos registros mantidos são preservados, exceto os tratamentos aprovados. A base também contém:
 
 - `chamados_excluidos_por_cronologia`: quantidade de datas retiradas de cada cliente na etapa 3. Distingue uma lista esvaziada pelo tratamento de um campo originalmente sem chamados.
 - `data_corte`: data de referência da fotografia.
@@ -96,10 +109,10 @@ Por padrão, são gerados dois arquivos:
 
 | Arquivo | Uso |
 | --- | --- |
-| `dados/tratados/base_churn_com_alvo.xlsx` | Base atual, na aba `base_tratada` |
+| `dados/tratados/base_churn_com_contagem_chamados.xlsx` | Base atual, na aba `base_tratada` |
 | `relatorios/diagnostico_preparacao.xlsx` | Resumo, protocolo e evidências da execução |
 
-O relatório tem **sete abas**, com no máximo um resumo global e uma aba de evidências por problema:
+O relatório tem **oito abas**: resumo e protocolo globais, mais evidências. O assunto chamados tem duas abas dedicadas, uma para a correção das datas e outra para a conversão numérica:
 
 | Aba | O que procurar |
 | --- | --- |
@@ -110,12 +123,13 @@ O relatório tem **sete abas**, com no máximo um resumo global e uma aba de evi
 | `03_chamados` | Uma linha por cliente afetado: datas excluídas, quantidade e lista antes/depois; também registra datas fora da janela histórica quando houver |
 | `04_cancelamentos` | Os dez registros excluídos, com suas datas originais |
 | `05_elegibilidade_alvo` | Uma avaliação por cliente da entrada desta etapa: histórico, participação, motivo e alvo |
+| `06_contagem_chamados` | Uma linha por cliente participante, com lista de entrada, datas da janela, contagem observada, ausências e sinalização de exclusões anteriores |
 
-Na última aba, filtre `elegivel = False` para ver os 14 clientes fora da população. Os 4.990 clientes avaliados aparecem ali; apenas os 4.976 participantes aparecem na base atual.
+Na aba `05_elegibilidade_alvo`, filtre `elegivel = False` para ver os 14 clientes fora da população. Os 4.990 clientes avaliados aparecem ali; apenas os 4.976 participantes aparecem na base atual.
 
 Cada evidência inclui cliente, arquivo e linha Excel da fonte. A numeração considera o cabeçalho na linha 1. Os índices originais são preservados em memória, mesmo depois das exclusões.
 
-As sete abas são reconstruídas juntas em cada execução. Os resultados anteriores de cada problema continuam representados, sem acumular abas antigas ou duplicadas. A fonte permanece intacta; os arquivos de saída ficam fora do Git e são reproduzíveis.
+As oito abas são reconstruídas juntas em cada execução. Os resultados anteriores de cada problema continuam representados, sem acumular abas antigas ou duplicadas. A fonte permanece intacta; os arquivos de saída ficam fora do Git e são reproduzíveis.
 
 As bases numeradas das versões anteriores são arquivos de conferência daquele fluxo. O resultado atual é o arquivo principal indicado acima. Para gerar intermediárias no novo fluxo, altere `salvar_intermediarias = False` para `True` em `main.py`; elas serão salvas em `dados/tratados/intermediarios/`.
 
@@ -160,6 +174,9 @@ Cada arquivo de implementação contém uma função. Os arquivos `__init__.py` 
 | Datas | `identificar_eventos_anteriores_aquisicao` | Encontrar chamados ou cancelamentos anteriores à aquisição da mesma linha |
 | Chamados | `filtrar_chamados_anteriores_aquisicao` | Retirar as datas identificadas e contar exclusões por cliente |
 | Chamados | `verificar_filtragem_chamados` | Conferir exatamente quais datas saíram e agrupar a evidência por cliente |
+| Datas | `identificar_contagem_chamados` | Contar os registros válidos da janela, reutilizando as datas interpretadas e as exclusões identificadas |
+| Chamados | `substituir_datas_por_contagem_chamados` | Trocar a coluna de listas pela coluna numérica sem mudar os demais dados |
+| Chamados | `verificar_contagem_chamados` | Conferir tipo inteiro, ausências, alinhamento e preservação do alvo; produzir a auditoria da conversão |
 | Cancelamentos | `remover_registros_com_cancelamento_inconsistente` | Excluir diretamente os registros identificados |
 | Cancelamentos | `verificar_exclusao_cancelamentos_inconsistentes` | Conferir os registros mantidos e guardar os excluídos na auditoria |
 | Datas | `identificar_elegibilidade_alvo` | Avaliar participação e desfecho com o protocolo e as datas já interpretadas |
@@ -176,11 +193,11 @@ Cada verificação devolve `resumo`, `evidencias`, `regra` e `decisao`. `montar_
 python -m unittest discover -s tests -v
 ```
 
-Os dez testes cobrem preservação da fonte, cópias integrais, remoção direta de cancelamentos inconsistentes, datas inválidas, limites temporais, histórico de 59/60 dias, construção dos rótulos, acompanhamento insuficiente e reprodução do fluxo. As exportações são simuladas nos testes do fluxo.
+Os doze testes cobrem preservação da fonte, cópias integrais, remoção direta de cancelamentos inconsistentes, datas inválidas, limites temporais, histórico de 59/60 dias, construção dos rótulos, acompanhamento insuficiente reprodução do fluxo e conversão dos chamados, distinguindo ausência de zero e preservando ocorrências válidas repetidas. As exportações são simuladas nos testes do fluxo.
 
 ## Pendências e limites desta versão
 
-- Construir `tempo_cliente_meses` e a contagem de chamados nos 90 dias históricos, definindo o significado dos chamados ausentes e dos campos esvaziados pelo tratamento.
+- Construir `tempo_cliente_meses` até o corte. A contagem histórica de chamados já está implementada; seu tratamento de ausências depende da imputação aprendida somente no treino.
 - Diagnosticar e tratar categorias, tipos, domínios, faixas, ausências dos preditores, redundância e ruído.
 - Definir o isolamento dos conjuntos de avaliação antes da EDA e das transformações aprendidas. Imputação, escala e codificação aprendida serão ajustadas somente no treino.
 - A base atual tem uma fotografia temporal. Uma avaliação estritamente fora do tempo exige fotografias de outras datas; isso não é obtido simplesmente separando clientes desta mesma fotografia.
