@@ -1,17 +1,23 @@
 from pathlib import Path
 
 from preparacao_dados.apresentar_estrutura_base import apresentar_estrutura_base
-from preparacao_dados.diagnosticos.diagnosticar_datas import diagnosticar_datas
-from preparacao_dados.diagnosticos.registrar_diagnostico_identificadores import (
+from preparacao_dados.diagnosticos.datas.diagnosticar_datas import diagnosticar_datas
+from preparacao_dados.diagnosticos.identificadores.registrar_diagnostico_identificadores import (
     registrar_diagnostico_identificadores,
 )
 from preparacao_dados.exportar_relatorio_excel import exportar_relatorio_excel
 from preparacao_dados.leitura_dados import ler_base_excel
-from preparacao_dados.tratamentos.preparar_base_sem_duplicatas import (
+from preparacao_dados.tratamentos.duplicatas.preparar_base_sem_duplicatas import (
     preparar_base_sem_duplicatas,
 )
-from preparacao_dados.tratamentos.preparar_base_com_datas_padronizadas import (
+from preparacao_dados.tratamentos.datas_aquisicao.preparar_base_com_datas_padronizadas import (
     preparar_base_com_datas_padronizadas,
+)
+from preparacao_dados.tratamentos.chamados.preparar_base_com_chamados_consistentes import (
+    preparar_base_com_chamados_consistentes,
+)
+from preparacao_dados.tratamentos.cancelamentos.preparar_base_com_cancelamentos_sinalizados import (
+    preparar_base_com_cancelamentos_sinalizados,
 )
 
 
@@ -24,6 +30,12 @@ def main() -> None:
     )
     caminho_datas_padronizadas = (
         pasta_projeto / "dados" / "tratados" / "02_base_churn_datas_padronizadas.xlsx"
+    )
+    caminho_chamados_filtrados = (
+        pasta_projeto / "dados" / "tratados" / "03_base_churn_chamados_filtrados.xlsx"
+    )
+    caminho_cancelamentos_sinalizados = (
+        pasta_projeto / "dados" / "tratados" / "04_base_churn_cancelamentos_sinalizados.xlsx"
     )
 
     dados = ler_base_excel(caminho_base)
@@ -41,6 +53,20 @@ def main() -> None:
         dados=dados_tratados,
         caminho_origem=caminho_base,
         caminho_saida=caminho_datas_padronizadas,
+        caminho_relatorio=caminho_relatorio,
+    )
+    dados_tratados = preparar_base_com_chamados_consistentes(
+        dados=dados_tratados,
+        diagnostico_entrada=abas_temporais,
+        caminho_origem=caminho_base,
+        caminho_saida=caminho_chamados_filtrados,
+        caminho_relatorio=caminho_relatorio,
+    )
+    dados_tratados = preparar_base_com_cancelamentos_sinalizados(
+        dados=dados_tratados,
+        ocorrencias=abas_temporais["02_inconsistencias_temporais"],
+        caminho_origem=caminho_base,
+        caminho_saida=caminho_cancelamentos_sinalizados,
         caminho_relatorio=caminho_relatorio,
     )
     apresentar_estrutura_base(dados_tratados)

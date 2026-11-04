@@ -4,13 +4,13 @@ import pandas as pd
 
 from preparacao_dados.exportar_base_excel import exportar_base_excel
 from preparacao_dados.exportar_relatorio_excel import exportar_relatorio_excel
-from preparacao_dados.tratamentos.identificar_duplicatas_excedentes import (
+from preparacao_dados.tratamentos.duplicatas.identificar_duplicatas_excedentes import (
     identificar_duplicatas_excedentes,
 )
-from preparacao_dados.tratamentos.remover_duplicatas_integrais import (
+from preparacao_dados.tratamentos.duplicatas.remover_duplicatas_integrais import (
     remover_duplicatas_integrais,
 )
-from preparacao_dados.tratamentos.verificar_remocao_duplicatas import (
+from preparacao_dados.tratamentos.duplicatas.verificar_remocao_duplicatas import (
     verificar_remocao_duplicatas,
 )
 

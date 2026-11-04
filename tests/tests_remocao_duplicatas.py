@@ -2,10 +2,10 @@ import unittest
 
 import pandas as pd
 
-from preparacao_dados.tratamentos.remover_duplicatas_integrais import (
+from preparacao_dados.tratamentos.duplicatas.remover_duplicatas_integrais import (
     remover_duplicatas_integrais,
 )
-from preparacao_dados.tratamentos.verificar_remocao_duplicatas import (
+from preparacao_dados.tratamentos.duplicatas.verificar_remocao_duplicatas import (
     verificar_remocao_duplicatas,
 )
 

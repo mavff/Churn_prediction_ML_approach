@@ -1,6 +1,6 @@
 import pandas as pd
 
-from preparacao_dados.diagnosticos.diagnosticar_cronologia import (
+from preparacao_dados.diagnosticos.datas.diagnosticar_cronologia import (
     diagnosticar_cronologia,
 )
 

@@ -2,15 +2,15 @@ from pathlib import Path
 
 import pandas as pd
 
-from preparacao_dados.diagnosticos.diagnosticar_identificadores import (
+from preparacao_dados.diagnosticos.identificadores.diagnosticar_identificadores import (
     diagnosticar_identificadores,
 )
-from preparacao_dados.diagnosticos.detalhar_identificadores_repetidos import (
+from preparacao_dados.diagnosticos.identificadores.detalhar_identificadores_repetidos import (
     detalhar_identificadores_repetidos,
 )
 from preparacao_dados.exportar_relatorio_excel import exportar_relatorio_excel
 
-from preparacao_dados.diagnosticos.montar_conclusoes_identificadores import (
+from preparacao_dados.diagnosticos.identificadores.montar_conclusoes_identificadores import (
     montar_conclusoes_identificadores,
 )
 

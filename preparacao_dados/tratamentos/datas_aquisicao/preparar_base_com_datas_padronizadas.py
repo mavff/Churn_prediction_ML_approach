@@ -4,10 +4,10 @@ import pandas as pd
 
 from preparacao_dados.exportar_base_excel import exportar_base_excel
 from preparacao_dados.exportar_relatorio_excel import exportar_relatorio_excel
-from preparacao_dados.tratamentos.padronizar_datas_aquisicao import (
+from preparacao_dados.tratamentos.datas_aquisicao.padronizar_datas_aquisicao import (
     padronizar_datas_aquisicao,
 )
-from preparacao_dados.tratamentos.verificar_padronizacao_datas_aquisicao import (
+from preparacao_dados.tratamentos.datas_aquisicao.verificar_padronizacao_datas_aquisicao import (
     verificar_padronizacao_datas_aquisicao,
 )
 
