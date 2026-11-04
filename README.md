@@ -1,198 +1,155 @@
 # Preparação de dados de churn
 
-Miniprojeto de preparação de dados para uso posterior em aprendizagem supervisionada e não supervisionada. A metodologia toma como referência as Aulas 1, 2 e 3 disponibilizadas pelo professor.
+Projeto de preparação reproduzível de dados para estudos posteriores de aprendizagem supervisionada e não supervisionada. A referência metodológica são as Aulas 1, 2 e 3 do professor.
 
-A versão atual lê a fonte, diagnostica identificadores e datas e aplica quatro tratamentos auditáveis. A preparação para modelagem ainda está em andamento: a base tratada não contém um alvo de churn validado.
+O programa começa pela planilha original, identifica problemas, aplica as regras aprovadas e gera uma base com os tratamentos estruturais aprovados. **Os modelos ainda não foram treinados e os demais tratamentos de qualidade ainda estão pendentes.**
 
 ## Como rodar
 
-O ambiente utilizado foi Python 3.12.3 no Linux. As dependências estão fixadas em `requirements.txt`.
+Ambiente utilizado: Python 3.12.3 no Linux. As dependências estão fixadas em `requirements.txt`.
 
-Na raiz do projeto, crie e ative o ambiente virtual:
+Na raiz do projeto:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
+python -m pip install -r requirements.txt
+python main.py
 ```
 
-No Windows com PowerShell:
+No Windows, a criação e ativação do ambiente com PowerShell são:
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```
 
-Instale as dependências e rode o fluxo completo:
+Depois, use os mesmos comandos de instalação e de execução. A entrada esperada é `dados/base_churn_5000_VF2_aluno.xlsx`, com uma única aba. Os caminhos são resolvidos a partir da localização de `main.py`.
 
-```bash
-python -m pip install -r requirements.txt
-python main.py
-```
+O resultado desta fonte tem **4.990 registros e 11 colunas**. Uma nova execução reproduz toda a sequência a partir da fonte.
 
-A fonte esperada é `dados/base_churn_5000_VF2_aluno.xlsx`. O leitor verifica sua existência e exige uma única aba. Os caminhos são resolvidos a partir da localização de `main.py`.
+## O que acontece, na ordem
 
-O programa cria automaticamente as pastas de saída. Nesta fonte, o resultado apresentado no terminal tem **5.000 registros e 12 colunas**.
+A sequência está explícita em `main.py`. Cada bloco identifica os casos, transforma uma cópia da base e verifica o resultado. A base devolvida alimenta o próximo bloco, sem reler arquivos intermediários.
 
-## Fluxo e tratamentos concluídos
+| Etapa | Identificação e decisão aplicada | Registros depois |
+| --- | --- | ---: |
+| Fonte | Leitura do Excel preservando os valores originais | 5.020 |
+| 1 — duplicatas | Remover 20 cópias iguais nas dez colunas da fonte; manter a primeira ocorrência | 5.000 |
+| 2 — datas | Padronizar 15 aquisições em formato alternativo para `DD/MM/AAAA`, sem mudar a data | 5.000 |
+| 3 — chamados | Excluir 52 datas anteriores à aquisição, distribuídas entre 33 clientes; preservar os chamados válidos | 5.000 |
+| 4 — cancelamentos | Excluir diretamente os dez registros com cancelamento anterior à aquisição, conforme decisão do projeto | 4.990 |
 
-Cada execução começa pela fonte original. Os tratamentos recebem em memória o `DataFrame` retornado pela etapa anterior; os arquivos Excel são saídas de conferência e não precisam ser relidos entre etapas.
+A exclusão de clientes na etapa 4 é específica para esses casos aprovados. A Aula 2, pp. 9–10 do PDF, alerta contra descarte indiscriminado de ausências e discute o risco de erro no alvo. Uma inconsistência cronológica não prova que todos os demais campos do cadastro estejam errados. Os dez registros completos continuam na fonte e na auditoria.
 
-1. Ler a fonte e registrar o diagnóstico dos identificadores.
-2. Aplicar T01: identificar, remover, verificar e auditar cópias integrais excedentes.
-3. Registrar o diagnóstico de formatos de datas e da cronologia.
-4. Aplicar T02: padronizar datas de aquisição, verificar e auditar o de-para.
-5. Aplicar T03: filtrar chamados anteriores à aquisição, verificar e auditar as datas removidas.
-6. Aplicar T04: isolar cancelamentos anteriores à aquisição, verificar e auditar a sinalização.
-7. Apresentar as dimensões e colunas da base resultante.
+O fluxo antigo esvaziava as dez datas, criava uma sinalização e depois excluía os mesmos clientes. Agora a exclusão é direta; a coluna `cancelamento_inconsistente` deixou de ser necessária.
 
-| Tratamento | Regra aplicada | Resultado nesta fonte |
-| --- | --- | --- |
-| T01 — duplicatas | Remover somente cópias iguais nas dez colunas originais, mantendo a primeira ocorrência na ordem da fonte | 5.020 → 5.000 registros; 20 cópias excedentes removidas; 5.000 IDs preservados |
-| T02 — datas de aquisição | Converter representações válidas em `AAAA-MM-DD` para `DD/MM/AAAA`, preservando a data | 15 células padronizadas; mesmos 5.000 registros e 10 campos |
-| T03 — chamados | Retirar apenas datas de chamados estritamente anteriores à aquisição da mesma linha da fonte | 52 datas retiradas de 33 clientes; 5.000 registros e 11 campos |
-| T04 — cancelamentos | Esvaziar a data de cancelamento estritamente anterior à aquisição e sinalizar sua inconsistência | 10 datas isoladas; 5.000 registros e 12 campos |
+## Protocolo temporal
 
-O diagnóstico considera identificadores nulos, vazios ou compostos somente por espaços como ausentes. Marcadores como `NA` ainda dependem de avaliação de domínio. Foram encontrados 20 IDs em duas linhas cada, com conteúdo integralmente igual; compartilhar um ID com conteúdos diferentes não autoriza remover um registro. Manter a primeira cópia é um critério determinístico: a fonte não oferece data de atualização para escolher a mais recente. Essa ressalva acompanha a discussão da Aula 2.
+A fotografia é o final de 21/09/2026; a janela futura de 60 dias vai de 22/09 a 20/11 e a referência didática de acompanhamento é 21/11/2026. A janela histórica de chamados vai de 24/06 a 21/09, inclusive, com 90 dias.
 
-O diagnóstico de datas aceita explicitamente `DD/MM/AAAA` e `AAAA-MM-DD`; não decide o formato por inferência automática. Aquisições ausentes ou não interpretáveis interrompem a etapa de padronização para investigação. Datas no mesmo dia da aquisição não violam a regra cronológica. Datas sem referência interpretável são contabilizadas como não comparáveis, sem serem consideradas conformes.
+Essas convenções ficam em `definir_protocolo_temporal.py`. A cobertura completa dos cancelamentos foi aprovada como hipótese didática, sem comprovação na fonte. A elegibilidade e o alvo serão acrescentados na próxima parte desta entrega; esta parte preserva o resultado dos tratamentos existentes.
 
-As regras de T03 e T04 foram aprovadas como decisões deste projeto. Uma data anterior à aquisição pode decorrer de erro na origem, reativação ou significado diferente dos campos; não inventamos uma data corrigida nem afirmamos qual dessas causas ocorreu. Os valores originais permanecem disponíveis na fonte e na auditoria.
+## O que mudou nas colunas
 
-### T03: por que a nova coluna existe
+As dez colunas originais são preservadas nos registros mantidos, exceto as células cujo tratamento foi aprovado. Esta parte acrescenta apenas o metadado de qualidade:
 
-`chamados_excluidos_por_cronologia` registra quantas datas foram excluídas de cada cliente. Os chamados válidos, inclusive no dia da aquisição, são preservados.
+- `chamados_excluidos_por_cronologia`: quantidade de datas retiradas de cada cliente na etapa 3. Distingue uma lista esvaziada pelo tratamento de um campo originalmente sem chamados.
 
-Em 17 clientes, todas as datas informadas violavam a regra e o campo ficou vazio. A contagem distingue esses casos dos 1.048 campos originalmente sem chamados. Na saída há 1.065 campos vazios e 8.545 datas informadas, contra 8.597 na entrada. Um campo vazio após exclusão não comprova que o cliente nunca teve chamados.
+Antes das exclusões posteriores, 17 clientes tiveram todas as datas de chamados removidas, além de 1.048 campos originalmente sem chamados. Esses vazios ainda não foram transformados automaticamente em contagem zero. As contagens no relatório referem-se à entrada e à saída de cada etapa.
 
-### T04: por que esvaziar e sinalizar
+**Esta base ainda não é a matriz de atributos dos modelos.** `churn` é o alvo supervisionado. Churn, datas de cancelamento e outras informações derivadas do desfecho ficam fora dos preditores, inclusive do agrupamento não supervisionado. IDs e metadados serão preservados para auditoria e separados dos atributos de modelagem.
 
-`cancelamento_inconsistente=True` identifica os dez clientes cuja data foi isolada. Esses clientes permanecem na base com **desfecho desconhecido**. A quantidade de datas de cancelamento em branco passa de 3.218 para 3.228.
+## Saídas e leitura do relatório
 
-O tratamento não cria `churn`, não converte esses casos em `churn = 0` e não interpreta `cancelamento_inconsistente=False` como comprovação de não churn. A sinalização é metadado de qualidade derivado do desfecho e não deverá ser usada como atributo dos modelos supervisionados ou do agrupamento.
+Por padrão, são gerados dois arquivos:
 
-## Arquivos gerados
-
-| Arquivo | Conteúdo |
+| Arquivo | Uso |
 | --- | --- |
-| `dados/tratados/01_base_churn_sem_duplicatas.xlsx` | Resultado de T01 |
-| `dados/tratados/02_base_churn_datas_padronizadas.xlsx` | Resultado acumulado de T01 + T02 |
-| `dados/tratados/03_base_churn_chamados_filtrados.xlsx` | Resultado acumulado de T01 + T02 + T03 |
-| `dados/tratados/04_base_churn_cancelamentos_sinalizados.xlsx` | Resultado acumulado dos quatro tratamentos; saída atual para conferência |
-| `relatorios/diagnostico_preparacao.xlsx` | Diagnósticos, evidências e auditorias antes/depois |
+| `dados/tratados/base_churn_sem_cancelamentos_inconsistentes.xlsx` | Base atual, na aba `base_tratada` |
+| `relatorios/diagnostico_preparacao.xlsx` | Resumo, protocolo e evidências da execução |
 
-Cada base é exportada na aba `base_tratada`. Os números dos arquivos indicam a sequência. A próxima transformação receberá a saída de T04 em memória, sem escolher um Excel manualmente.
+O relatório tem **seis abas**, com no máximo um resumo global e uma aba de evidências por problema:
 
-As reexecuções começam pela fonte, atualizam os mesmos arquivos e substituem as abas informadas, preservando as demais. A fonte é mantida intacta. As saídas ficam fora do Git e podem ser recriadas com `python main.py`. Hoje as quatro bases são exportadas; tornar opcionais as bases intermediárias permanece uma pendência.
-
-## Como ler o relatório
-
-| Aba | Conteúdo |
+| Aba | O que procurar |
 | --- | --- |
-| `01_diagnostico_identificadores` | Cinco indicadores estruturais sobre a fonte original |
-| `01_evidencias_identificadores` | Os 40 registros associados aos IDs repetidos |
-| `01_conclusoes_identificadores` | Evidências, regra de referência e decisão da deduplicação |
-| `T01_indicadores` | Indicadores antes/depois da deduplicação |
-| `T01_registros_removidos` | As 20 cópias excedentes, vinculadas às ocorrências mantidas |
-| `02_resumo_datas` | Presença, formatos e intervalos das datas após T01 e antes de T02 |
-| `02_datas_nao_interpretadas` | Falhas nos formatos aceitos; vazia na fonte atual |
-| `02_resumo_cronologia` | Quantidades comparáveis e alertas anteriores a T03 e T04 |
-| `02_inconsistencias_temporais` | Uma linha por data inconsistente: 52 de chamados e 10 de cancelamentos |
-| `T02_indicadores` | Indicadores antes/depois da padronização |
-| `T02_alteracoes_datas` | As 15 células padronizadas, com valores antes/depois |
-| `T03_indicadores` | Quantidades de datas, clientes, campos vazios e exclusões antes/depois |
-| `T03_datas_excluidas` | As 52 datas retiradas, com listas antes/depois e motivo |
-| `T04_indicadores` | Quantidades de cancelamentos inconsistentes, vazios e sinalizações antes/depois |
-| `T04_cancelamentos_isolados` | As dez datas isoladas, com valores originais e decisão aplicada |
+| `00_resumo` | Indicadores antes/depois por problema; comece por aqui |
+| `00_protocolo` | Datas, hipóteses, regras aprovadas e pendências |
+| `01_duplicatas` | As 20 cópias removidas e a linha da ocorrência mantida |
+| `02_datas` | Os 15 valores antes/depois da padronização |
+| `03_chamados` | Uma linha por cliente afetado: datas excluídas, quantidade e lista antes/depois; também registra datas fora da janela histórica quando houver |
+| `04_cancelamentos` | Os dez registros excluídos, com suas datas originais |
 
-As abas `02_*` retratam a **entrada dos tratamentos temporais**. Por isso continuam mostrando as 15 aquisições ISO e os alertas cronológicos encontrados. Os textos de proposta e decisão dessa fotografia do diagnóstico também permanecem como foram produzidos. As decisões efetivamente aplicadas e os resultados estão em `T02_*`, `T03_*` e `T04_*`; manter as evidências de entrada não significa que o tratamento falhou.
+Cada evidência inclui cliente, arquivo e linha Excel da fonte. A numeração considera o cabeçalho na linha 1. Os índices originais são preservados em memória, mesmo depois das exclusões.
 
-Na aba de inconsistências, um cliente pode aparecer várias vezes por ter várias datas inválidas. `valor_original` guarda o conteúdo completo da célula, `valor_data` contém a data individual analisada e `data_interpretada` contém sua conversão para comparação. A unidade dessa aba é a ocorrência de inconsistência; a unidade da base tratada continua sendo o registro de cliente.
+As seis abas são reconstruídas juntas em cada execução. Os resultados anteriores de cada problema continuam representados, sem acumular abas antigas ou duplicadas. A fonte permanece intacta; os arquivos de saída ficam fora do Git e são reproduzíveis.
 
-Os logs incluem o arquivo original e a linha Excel da fonte, com o cabeçalho na linha 1. Os índices originais são preservados em memória para manter esse vínculo. A auditoria de T01 relaciona cada linha removida à mantida; as demais registram o de-para das células ou datas modificadas.
+As bases numeradas das versões anteriores são arquivos de conferência daquele fluxo. O resultado atual é o arquivo principal indicado acima. Para gerar intermediárias no novo fluxo, altere `salvar_intermediarias = False` para `True` em `main.py`; elas serão salvas em `dados/tratados/intermediarios/`.
 
-## Organização do código
+## Como os arquivos Python se dividem
+
+`main.py` mostra a ordem e faz as chamadas. As funções de negócio não leem Excel, não imprimem resultados e não exportam arquivos. As funções de entrada e saída concentram essas operações.
 
 ```text
-main.py
+main.py                                  # sequência explícita
 preparacao_dados/
-├── __init__.py
-├── leitura_dados.py
-├── apresentar_estrutura_base.py
-├── exportar_base_excel.py
-├── exportar_relatorio_excel.py
+├── leitura_dados.py                      # entrada
+├── definir_protocolo_temporal.py         # convenções aprovadas
+├── montar_abas_relatorio.py              # montagem do relatório compacto
+├── exportar_base_excel.py                # saída da base; intermediárias opcionais
+├── exportar_relatorio_excel.py           # escrita e formatação do Excel
+├── apresentar_estrutura_base.py          # dimensões e colunas no terminal
 ├── diagnosticos/
-│   ├── __init__.py
-│   ├── identificadores/          # identificação e evidências de IDs
-│   └── datas/                    # formatos e cronologia
+│   ├── identificadores/                  # identificar cópias e referências
+│   └── datas/                            # interpretar datas, identificar problemas e população
 └── tratamentos/
-    ├── __init__.py
-    ├── duplicatas/               # T01
-    ├── datas_aquisicao/          # T02
-    ├── chamados/                 # T03
-    └── cancelamentos/            # T04
-dados/
-├── base_churn_5000_VF2_aluno.xlsx
-└── tratados/                    # saídas geradas; fora do Git
-relatorios/                     # saídas geradas; fora do Git
-tests/
-requirements.txt
-.gitignore
-README.md
+    ├── duplicatas/                       # remover cópias e verificar
+    ├── datas_aquisicao/                  # aplicar de-para e verificar
+    ├── chamados/                         # filtrar datas e verificar
+    ├── cancelamentos/                    # excluir registros e verificar
+tests/                                   # testes automatizados
 ```
 
-Cada arquivo Python de implementação contém uma função. As novas subpastas possuem `__init__.py` vazio. Agrupar por assunto facilita encontrar o diagnóstico e o tratamento correspondente; não exige criar novas classes ou padrões.
+Cada arquivo de implementação contém uma função. Os arquivos `__init__.py` identificam os pacotes e disponibilizam os nomes para imports mais curtos na `main`; não executam o fluxo.
 
-`main.py` configura os caminhos e encadeia as chamadas. Os módulos compartilhados leem a fonte (`leitura_dados`), apresentam dimensões (`apresentar_estrutura_base`), exportam tabelas preservando as outras abas (`exportar_relatorio_excel`) e adaptam essa exportação para bases na aba `base_tratada` (`exportar_base_excel`).
+### Identificar, transformar e verificar
 
-Dentro dos pacotes abaixo, cada nome de módulo corresponde ao arquivo Python e à função nele definida:
-
-| Pacote | Módulo | Responsabilidade |
+| Grupo | Arquivo/função | Responsabilidade |
 | --- | --- | --- |
-| `diagnosticos.identificadores` | `diagnosticar_identificadores` | Contar ausências e repetições |
-| `diagnosticos.identificadores` | `detalhar_identificadores_repetidos` | Selecionar evidências e marcar repetições integrais |
-| `diagnosticos.identificadores` | `montar_conclusoes_identificadores` | Registrar conclusões e decisão aprovada |
-| `diagnosticos.identificadores` | `registrar_diagnostico_identificadores` | Coordenar o diagnóstico e sua exportação |
-| `diagnosticos.datas` | `diagnosticar_datas` | Interpretar datas, produzir o perfil e encaminhar à checagem cronológica |
-| `diagnosticos.datas` | `diagnosticar_cronologia` | Comparar eventos com a aquisição da mesma linha da fonte |
-| `tratamentos.duplicatas` | `identificar_duplicatas_excedentes` | Vincular cópias excedentes às ocorrências mantidas |
-| `tratamentos.duplicatas` | `remover_duplicatas_integrais` | Aplicar a deduplicação numa cópia |
-| `tratamentos.duplicatas` | `verificar_remocao_duplicatas` | Conferir integridade e produzir indicadores |
-| `tratamentos.duplicatas` | `preparar_base_sem_duplicatas` | Coordenar T01 e suas exportações |
-| `tratamentos.datas_aquisicao` | `padronizar_datas_aquisicao` | Aplicar o de-para das aquisições ISO |
-| `tratamentos.datas_aquisicao` | `verificar_padronizacao_datas_aquisicao` | Conferir datas e campos preservados; produzir indicadores e auditoria |
-| `tratamentos.datas_aquisicao` | `preparar_base_com_datas_padronizadas` | Coordenar T02 e suas exportações |
-| `tratamentos.chamados` | `filtrar_chamados_anteriores_aquisicao` | Remover somente datas já diagnosticadas e contar exclusões |
-| `tratamentos.chamados` | `verificar_filtragem_chamados` | Conferir datas removidas e campos preservados; produzir indicadores e auditoria |
-| `tratamentos.chamados` | `preparar_base_com_chamados_consistentes` | Coordenar T03 e suas exportações |
-| `tratamentos.cancelamentos` | `isolar_cancelamentos_inconsistentes` | Esvaziar datas diagnosticadas e sinalizar a incerteza |
-| `tratamentos.cancelamentos` | `verificar_isolamento_cancelamentos` | Conferir o isolamento e a sinalização; produzir indicadores e auditoria |
-| `tratamentos.cancelamentos` | `preparar_base_com_cancelamentos_sinalizados` | Coordenar T04 e suas exportações |
+| Identificadores | `identificar_duplicatas_excedentes` | Encontrar cópias integrais e vincular a linha removida à mantida |
+| Duplicatas | `remover_duplicatas_integrais` | Remover as cópias já identificadas |
+| Duplicatas | `verificar_remocao_duplicatas` | Conferir clientes, conteúdo preservado e ausência de cópias restantes |
+| Datas | `interpretar_datas` | Interpretar os três campos temporais uma vez, com formatos explícitos e rastreabilidade |
+| Datas | `identificar_aquisicoes_fora_padrao` | Selecionar aquisições válidas com representação diferente de `DD/MM/AAAA` |
+| Aquisição | `padronizar_datas_aquisicao` | Aplicar o de-para aos casos selecionados |
+| Aquisição | `verificar_padronizacao_datas_aquisicao` | Conferir datas e demais campos preservados; produzir o de-para de auditoria |
+| Datas | `identificar_eventos_anteriores_aquisicao` | Encontrar chamados ou cancelamentos anteriores à aquisição da mesma linha |
+| Chamados | `filtrar_chamados_anteriores_aquisicao` | Retirar as datas identificadas e contar exclusões por cliente |
+| Chamados | `verificar_filtragem_chamados` | Conferir exatamente quais datas saíram e agrupar a evidência por cliente |
+| Cancelamentos | `remover_registros_com_cancelamento_inconsistente` | Excluir diretamente os registros identificados |
+| Cancelamentos | `verificar_exclusao_cancelamentos_inconsistentes` | Conferir os registros mantidos e guardar os excluídos na auditoria |
 
-T02, T03 e T04 têm três módulos cada: transformação, verificação com auditoria e coordenação. T01 preserva seu quarto módulo de identificação, necessário para vincular cópias removidas às mantidas. T03 e T04 reutilizam as ocorrências do diagnóstico já calculado; a verificação da saída confirma se a regra passou a ser atendida.
+Os tratamentos usam as ocorrências identificadas; não procuram novamente o mesmo problema. As verificações confirmam condições essenciais da saída. A interpretação de todas as datas não é repetida a cada tratamento.
 
-## Como rodar os testes
+Cada verificação devolve `resumo`, `evidencias`, `regra` e `decisao`. `montar_abas_relatorio` reúne esses resultados. Assim, uma nova regra pode ser acrescentada à sequência sem criar outro coordenador ou escritor Excel por tratamento.
 
-Na raiz do projeto, com o ambiente ativo:
+## Testes
 
 ```bash
 python -m unittest discover -s tests -v
 ```
 
-O teste versionado atual cobre a deduplicação: preservação da fonte, remoção somente de cópias integrais, manutenção de registros com mesmo ID e conteúdos diferentes, indicadores e rejeição de mudanças indevidas nas linhas mantidas.
+Os sete testes cobrem preservação da fonte, cópias integrais, remoção direta de cancelamentos inconsistentes, datas inválidas, limites da janela histórica e reprodução do fluxo. As exportações são simuladas nos testes do fluxo.
 
-Os quatro tratamentos também fazem verificações de integridade durante `python main.py`, antes de suas exportações. Ampliar os testes automatizados versionados para T02, T03 e T04 permanece uma pendência; as verificações do fluxo não equivalem a uma suíte independente de testes.
+## Pendências e limites desta versão
 
-## Pendências metodológicas e próximas etapas
+- Acrescentar elegibilidade e alvo na parte seguinte, seguindo as convenções aprovadas.
 
-Os tratamentos concluídos são regras fixas aprovadas, sem parâmetros estatísticos aprendidos. As próximas decisões continuam incrementais.
+- Construir `tempo_cliente_meses` e a contagem de chamados nos 90 dias históricos, definindo o significado dos chamados ausentes e dos campos esvaziados pelo tratamento.
+- Diagnosticar e tratar categorias, tipos, domínios, faixas, ausências dos preditores, redundância e ruído.
+- Definir o isolamento dos conjuntos de avaliação antes da EDA e das transformações aprendidas. Imputação, escala e codificação aprendida serão ajustadas somente no treino.
+- A base atual tem uma fotografia temporal. Uma avaliação estritamente fora do tempo exige fotografias de outras datas; isso não é obtido simplesmente separando clientes desta mesma fotografia.
+- A Aula 3 utiliza uma VF3 e tamanhos próprios do exemplo. Seus totais e métricas não são metas a copiar para a VF2 após os filtros deste projeto.
+- Preparar os atributos adequados a cada tarefa, separar alvo e metadados e só então avançar para modelagem.
 
-- **Unidade de análise:** construir e validar uma fotografia de cliente na data de corte, considerando eventuais reativações e o significado dos campos.
-- **Protocolo temporal:** o horizonte inicial é de 60 dias. Corte e cobertura do acompanhamento da VF2 ainda não foram confirmados. As candidatas didáticas são 21/09/2026 e 21/11/2026, separadas por 61 dias; é necessária uma convenção explícita para os 60 dias.
-- **Disponibilidade dos atributos:** confirmar a fotografia de referência de cada campo e usar somente informações disponíveis até o corte.
-- **Alvo:** definir elegibilidade, acompanhamento e desfecho. Data de cancelamento ausente não comprova `churn = 0`; os casos sinalizados em T04 mantêm desfecho desconhecido.
-- **Avaliação:** definir isolamento temporal e por cliente antes da EDA que orientará tratamentos. Estatísticas e transformações aprendidas serão ajustadas somente no treino.
-- **Qualidade e EDA:** diagnosticar ausências, tipos, domínios, categorias e demais inconsistências; estudar distribuições e relações no treino após estabelecer o protocolo.
-- **Modelagem:** preparar representações adequadas a cada tarefa. Churn e informações derivadas do desfecho não serão atributos do agrupamento. `cancelamento_inconsistente` também deve ficar fora dos atributos supervisionados.
-- **Entrega final:** gerar a base preparada e o relatório consolidado, tornando opcionais as exportações completas de bases intermediárias.
-
-Nenhum modelo foi treinado. A base 04 representa quatro tratamentos de qualidade concluídos, ainda sem a visão analítica e o protocolo de avaliação necessários à aprendizagem de máquina.
+As regras implementadas são fixas e aprovadas, sem parâmetros estatísticos aprendidos. Esta parte entrega o fluxo refatorado com os tratamentos anteriores e auditoria compacta; a preparação completa para aprendizagem de máquina continua incremental.

@@ -1,0 +1,4 @@
+"""Interface de importação; as implementações permanecem nos próprios módulos."""
+from .interpretar_datas import interpretar_datas
+from .identificar_aquisicoes_fora_padrao import identificar_aquisicoes_fora_padrao
+from .identificar_eventos_anteriores_aquisicao import identificar_eventos_anteriores_aquisicao
