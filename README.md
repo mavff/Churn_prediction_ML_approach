@@ -2,7 +2,7 @@
 
 Projeto de preparação reproduzível de dados para estudos posteriores de aprendizagem supervisionada e não supervisionada. A referência metodológica são as Aulas 1, 2 e 3 do professor.
 
-O programa começa pela planilha original, identifica problemas, aplica as regras aprovadas e gera uma base com população definida e alvo `churn`. As regras fixas do dicionário já são verificadas. **Divisão dos conjuntos, imputação e modelagem continuam pendentes.**
+O programa começa pela planilha original, constrói a população e o alvo `churn`, divide os clientes e aplica as regras fixas do dicionário em cada conjunto. A divisão é 50% treino, 25% validação e 25% teste. **EDA no treino, imputação e modelagem continuam pendentes.**
 
 ## Como rodar
 
@@ -30,7 +30,7 @@ O resultado desta fonte tem **4.976 registros e 14 colunas**. Uma nova execuçã
 
 ## O que acontece, na ordem
 
-A sequência está explícita em `main.py`. Cada bloco identifica os casos, transforma uma cópia da base e verifica o resultado. A base devolvida alimenta o próximo bloco, sem reler arquivos intermediários.
+A `main.py` contém quatro chamadas principais: construir a visão, dividir os clientes, preparar os conjuntos e exportar os resultados. Cada função coordenadora agrupa as chamadas das regras existentes. Dentro de cada tratamento continuam separadas identificação, transformação e verificação. A base devolvida alimenta o próximo bloco, sem reler arquivos intermediários.
 
 | Etapa | Identificação e decisão aplicada | Registros depois |
 | --- | --- | ---: |
@@ -42,12 +42,49 @@ A sequência está explícita em `main.py`. Cada bloco identifica os casos, tran
 | 5 — elegibilidade e alvo | Selecionar clientes com pelo menos 60 dias de histórico, ativos no corte e com desfecho conhecido; criar `churn` | 4.976 |
 | 6 — contagem de chamados | Substituir as listas pela quantidade de datas válidas nos 90 dias históricos; preservar ausências para a imputação posterior | 4.976 |
 | 7 — tempo de cliente | Acrescentar `tempo_cliente_meses`, calculado até o corte, preservando a aquisição | 4.976 |
+| Divisão | Isolar os clientes em treino (2.488), validação (1.244) e teste (1.244), antes da qualidade dos preditores | 4.976 |
 | 8 — categorias | Padronizar 80 células de contrato e 89 de pagamento; normalizar ausências e converter categorias desconhecidas em ausentes, com auditoria | 4.976 |
 | 9 — números | Validar os seis preditores numéricos/binários, aplicar os tipos esperados e converter 20 células fora do domínio em ausentes | 4.976 |
 
 A exclusão de clientes na etapa 4 é específica para esses casos aprovados. A Aula 2, pp. 9–10 do PDF, alerta contra descarte indiscriminado de ausências e discute o risco de erro no alvo. Uma inconsistência cronológica não prova que todos os demais campos do cadastro estejam errados. Os dez registros completos continuam na fonte e na auditoria.
 
 O fluxo antigo esvaziava as dez datas, criava uma sinalização e depois excluía os mesmos clientes. Agora a exclusão é direta; a coluna `cancelamento_inconsistente` deixou de ser necessária.
+
+## Coordenação e divisão dos clientes
+
+| Chamada principal | O que coordena |
+| --- | --- |
+| `construir_visao_analitica` | Duplicatas, referências temporais, população, alvo, contagem de chamados e tempo de cliente |
+| `dividir_conjuntos` | Protocolo de separação, estratificação e verificação dos três conjuntos |
+| `preparar_conjuntos` | De-para e validação numérica em cada conjunto, seguidos da separação de atributos, alvo e metadados |
+| `exportar_resultados` | Base completa, workbook opcional dos conjuntos e diagnóstico consolidado |
+
+A Aula 3 apresenta 70/30 na p. 4 e 50/25/25 na p. 5 do PDF. O projeto adotou explicitamente a segunda opção, combinada com a estratificação por churn e `random_state=42` discutidos no exemplo da p. 4. A configuração fica em `preparacao_dados/divisao/definir_protocolo_divisao.py`.
+
+| Conjunto | Clientes | Churn = 0 | Churn = 1 | Uso posterior |
+| --- | ---: | ---: | ---: | --- |
+| Treino | 2.488 | 1.606 | 882 | EDA, ajuste de imputação/escala/codificação e treinamento |
+| Validação | 1.244 | 803 | 441 | Comparar configurações sem reajustar parâmetros de preparação |
+| Teste | 1.244 | 804 | 440 | Avaliação final reservada |
+
+O sorteio ocorre em duas etapas: 50% para treino e 50% de reserva; a reserva é dividida igualmente em validação e teste. Os clientes são ordenados por identificador antes do sorteio para tornar a atribuição estável perante reordenação das linhas. Os índices de origem continuam preservados. A verificação exige cobertura integral, conteúdo preservado e nenhum cliente compartilhado. Se as classes forem pequenas demais para estratificar três conjuntos, o programa informa o problema e não troca o protocolo silenciosamente.
+
+A divisão é de clientes da mesma fotografia. As janelas de 90 dias históricos e 60 dias do alvo permanecem iguais. Isso não implementa uma avaliação em época futura. O campo churn é usado para estratificar e fica separado dos preditores.
+
+Depois da divisão, as regras fixas do dicionário são aplicadas individualmente aos conjuntos. A base completa reconstruída preserva exatamente os valores e rótulos da versão anterior; a nova organização muda a coordenação e acrescenta o isolamento. Os totais de auditoria são somados e as evidências recebem `conjunto`, mantendo um relatório único.
+
+Em memória, o resultado de `preparar_conjuntos` é um dicionário com `treino`, `validacao` e `teste`. Cada entrada contém:
+
+- `X`: os oito preditores do dicionário, sem churn, identificador ou datas do desfecho.
+- `y`: somente a série `churn`, com os mesmos índices de X.
+- `metadados`: identificador, datas e campos de auditoria preservados.
+- `ordem_colunas`: a ordem original, usada para reconstruir as exportações completas.
+
+## Como a futura imputação será reutilizada
+
+Ainda não há preenchimento estatístico nesta versão. Na próxima etapa, o preprocessador será ajustado somente em `preparados["treino"]["X"]`, após a EDA no treino. Validação e teste receberão apenas a transformação com esse objeto ajustado. A Aula 2, p. 16 do PDF, orienta encapsular imputação, codificação e escala em Pipeline/ColumnTransformer.
+
+O ajuste deve ficar separado do laço que aplica regras fixas a cada conjunto: não se deve chamar `fit` três vezes. A aplicação futura do preprocessador receberá somente os preditores, sem exigir churn. Novos dados de previsão não serão usados para refazer a divisão ou recalcular medianas e modas; usarão as mesmas colunas e o objeto aprendido no treino. Persistência, carregamento desse objeto e fluxo de previsão ainda serão implementados.
 
 ## Como o alvo foi construído
 
@@ -92,7 +129,7 @@ Na base atual, há 3.917 contagens numéricas e 1.059 campos sem lista. Estes pe
 
 Uma lista vazia não é preenchida automaticamente com zero nesta etapa. Já uma lista preenchida cujos eventos estão todos fora dos 90 dias tem contagem histórica zero. Os dois casos são distintos.
 
-A Aula 2, pp. 9 e 16 do PDF, orienta aprender mediana/moda somente no treino. A separação de avaliação e a imputação serão implementadas depois; esta conversão não aprende estatísticas nem preenche os ausentes. Valores imputados serão estimativas identificáveis, não novos eventos observados.
+A Aula 2, pp. 9 e 16 do PDF, orienta aprender mediana/moda somente no treino. A separação de avaliação já está implementada; a imputação virá depois. Esta conversão não aprende estatísticas nem preenche os ausentes. Valores imputados serão estimativas identificáveis, não novos eventos observados.
 
 ## Tempo de cliente e de-para das categorias
 
@@ -148,7 +185,7 @@ A Aula 2, p. 10, recomenda investigar a origem ou remover outliers comprovados. 
 
 Tempo de cliente e indicadores binários não apresentam valores inválidos nem ausências nesta população. Os valores acima se referem aos 4.976 clientes participantes, depois das etapas temporais.
 
-Obrigatoriedade é registrada no protocolo: ausências nos preditores obrigatórios continuam pendentes de imputação; não são convertidas em zero. **Esta saída ainda contém ausências e não está pronta para treinar modelos.** Nenhum valor foi preenchido por mediana, moda ou outra estimativa. A escolha e o ajuste desses parâmetros ocorrerão somente no treino, depois da divisão dos conjuntos, conforme Aula 2, pp. 9 e 16.
+Obrigatoriedade é registrada no protocolo: ausências nos preditores obrigatórios continuam pendentes de imputação; não são convertidas em zero. **Esta saída ainda contém ausências e não está pronta para treinar modelos.** Nenhum valor foi preenchido por mediana, moda ou outra estimativa. A escolha e o ajuste desses parâmetros ocorrerão somente no treino agora isolado, conforme Aula 2, pp. 9 e 16.
 
 ## O que mudou nas colunas
 
@@ -165,14 +202,15 @@ Antes das exclusões posteriores, 17 clientes tiveram todas as datas de chamados
 
 ## Saídas e leitura do relatório
 
-Por padrão, são gerados dois arquivos:
+Por padrão, são gerados três arquivos:
 
 | Arquivo | Uso |
 | --- | --- |
 | `dados/tratados/base_churn_com_dicionario_tratado.xlsx` | Base atual, na aba `base_tratada` |
+| `dados/tratados/conjuntos_churn.xlsx` | Abas `treino`, `validacao` e `teste`, com seus atributos, alvo e metadados para conferência |
 | `relatorios/diagnostico_preparacao.xlsx` | Resumo, protocolo e evidências; relatório versionado no Git neste marco |
 
-O relatório tem **onze abas**: resumo e protocolo globais, mais evidências. A validação do dicionário ocupa duas abas dedicadas: categorias e números. O assunto chamados também tem duas, para cronologia e conversão numérica:
+O relatório tem **doze abas**: resumo e protocolo globais, mais evidências. A validação do dicionário ocupa duas abas dedicadas: categorias e números. A divisão acrescenta uma aba com a atribuição dos clientes:
 
 | Aba | O que procurar |
 | --- | --- |
@@ -187,20 +225,23 @@ O relatório tem **onze abas**: resumo e protocolo globais, mais evidências. A 
 | `07_tempo_cliente` | Aquisição, corte e meses completos calculados para cada cliente participante |
 | `08_categorias` | Campo e valor antes/depois de cada grafia corrigida, ausência ou categoria desconhecida; filtre `situacao` |
 | `09_numericos` | Campo, valor antes/depois e regra de cada ausência, conversão textual ou número inválido; filtre `situacao` e `campo` |
+| `10_divisao` | Cliente, linha da fonte, corte, alvo e conjunto atribuído; uma linha por cliente participante |
 
 Na aba `05_elegibilidade_alvo`, filtre `elegivel = False` para ver os 14 clientes fora da população. Os 4.990 clientes avaliados aparecem ali; apenas os 4.976 participantes aparecem na base atual.
 
 Cada evidência inclui cliente, arquivo e linha Excel da fonte. A numeração considera o cabeçalho na linha 1. Os índices originais são preservados em memória, mesmo depois das exclusões.
 
-Nas abas `08_categorias` e `09_numericos`, cada linha descreve uma célula auditada. O mesmo cliente pode aparecer por campos diferentes; a coluna `campo` identifica o motivo de cada ocorrência. Para ver somente os valores numéricos invalidados, filtre `situacao` por `fora_faixa`, `nao_inteiro` ou `tipo_invalido`.
+Nas abas `08_categorias` e `09_numericos`, cada linha descreve uma célula auditada e informa seu conjunto. O mesmo cliente pode aparecer por campos diferentes; a coluna `campo` identifica o motivo de cada ocorrência. Para ver somente os valores numéricos invalidados, filtre `situacao` por `fora_faixa`, `nao_inteiro` ou `tipo_invalido`. A numeração das abas identifica os assuntos; a ordem da execução está na main.
 
-As onze abas são reconstruídas juntas em cada execução. Os resultados anteriores de cada problema continuam representados, sem acumular abas antigas ou duplicadas. A fonte permanece intacta. O relatório `relatorios/diagnostico_preparacao.xlsx` é versionado no Git como registro do marco; a base tratada permanece fora do Git e é reproduzível pela execução do programa.
+As doze abas são reconstruídas juntas em cada execução. Os resultados anteriores de cada problema continuam representados, sem acumular abas antigas ou duplicadas. A fonte permanece intacta. O relatório `relatorios/diagnostico_preparacao.xlsx` é versionado no Git como registro do marco; as bases tratadas permanecem fora do Git e são reproduzíveis pela execução do programa.
+
+Os arquivos dos conjuntos e da base completa podem ser desligados separadamente em `main.py`, pelos argumentos `salvar_conjuntos=False` e `salvar_base_completa=False` de `exportar_resultados`. A separação em memória e a auditoria continuam existindo. As abas completas exportadas contêm também metadados; o uso em modelos deve ocorrer por `X`, que possui apenas oito colunas.
 
 As bases numeradas e os arquivos principais das versões anteriores, como `base_churn_com_contagem_chamados.xlsx`, são saídas antigas. O resultado atual é o arquivo principal indicado acima. A entrada do programa continua sendo a fonte original. Para gerar as intermediárias opcionais das quatro primeiras etapas, altere `salvar_intermediarias = False` para `True` em `main.py`; elas serão salvas em `dados/tratados/intermediarios/`.
 
 ## Como os arquivos Python se dividem
 
-`main.py` mostra a ordem e faz as chamadas. As funções de negócio não leem Excel, não imprimem resultados e não exportam arquivos. As funções de entrada e saída concentram essas operações.
+`main.py` mostra as quatro fases principais. As funções coordenadoras ficam em `fluxos/`; a divisão fica em `divisao/`. As funções de cada regra continuam separadas em diagnósticos e tratamentos. As operações de entrada e saída usam os exportadores existentes; nenhuma regra de limpeza foi reescrita dentro da main.
 
 ```text
 main.py                                  # sequência explícita
@@ -213,6 +254,16 @@ preparacao_dados/
 ├── exportar_base_excel.py                # saída da base; intermediárias opcionais
 ├── exportar_relatorio_excel.py           # escrita e formatação do Excel
 ├── apresentar_estrutura_base.py          # dimensões e colunas no terminal
+├── fluxos/                              # coordenadores das fases e consolidação da auditoria
+│   ├── construir_visao_analitica.py      # etapas temporais e população
+│   ├── preparar_conjuntos.py            # qualidade por conjunto e separação de X/y
+│   ├── consolidar_diagnosticos_conjuntos.py # contagens e evidências em um relatório
+│   └── exportar_resultados.py           # coordenação das saídas
+├── divisao/
+│   ├── definir_protocolo_divisao.py      # proporções e semente
+│   ├── dividir_conjuntos.py             # divisão estratificada
+│   ├── verificar_divisao.py             # cobertura, conteúdo e isolamento
+│   └── separar_atributos_alvo.py        # X, y, metadados e ordem das colunas
 ├── diagnosticos/
 │   ├── identificar_ausencias.py          # reconhecimento comum de marcadores
 │   ├── identificadores/                  # identificar cópias e referências
@@ -273,7 +324,7 @@ Os tratamentos usam as ocorrências identificadas; não procuram novamente o mes
 
 Cada verificação devolve `resumo`, `evidencias`, `regra` e `decisao`. `montar_abas_relatorio` reúne esses resultados. Assim, uma nova regra pode ser acrescentada à sequência sem criar outro coordenador ou escritor Excel por tratamento.
 
-Para acrescentar uma regra, siga uma etapa existente: implemente a identificação em `diagnosticos/`, a transformação e a verificação em `tratamentos/`, com uma função por arquivo. Exponha as funções no `__init__.py` da pasta e adicione as três chamadas na posição adequada da `main`, guardando a verificação em `resultados`. O exportador existente reunirá a nova evidência e os indicadores.
+Para acrescentar uma regra, siga uma etapa existente: implemente a identificação em `diagnosticos/`, a transformação e a verificação em `tratamentos/`, com uma função por arquivo. Acrescente as três chamadas ao coordenador adequado: regras temporais em `construir_visao_analitica`, qualidade fixa dos preditores em `preparar_conjuntos`. Guarde a verificação em `resultados`. A main só precisa de nova chamada quando houver uma nova fase principal. Parâmetros aprendidos devem ficar em uma etapa de ajuste no treino, fora do laço de preparação dos conjuntos.
 
 Preserve o índice original dos registros: `linha_excel = indice + 2`, considerando a indexação a partir de zero e o cabeçalho na linha 1. Reiniciar os índices entre as etapas quebra essa referência. As datas interpretadas uma vez representam a fonte; etapas seguintes devem considerar os clientes que ainda participam e as exclusões já identificadas. As funções existentes de contagem e tempo de cliente mostram esse alinhamento.
 
@@ -283,7 +334,7 @@ Preserve o índice original dos registros: `linha_excel = indice + 2`, considera
 python -m unittest discover -s tests -v
 ```
 
-Os 22 testes cobrem preservação da fonte, duplicatas, datas, janelas, rótulos, meses completos, de-para e reprodução do fluxo. Também incluem limites inclusivos, `-88`/`-85`/`9999` em mensalidade, `99` em atrasos, frações em contagens, marcadores de ausência, zeros válidos, categorias desconhecidas e bloqueio de alvo ou esquema inválido. As exportações são simuladas nos testes do fluxo.
+Os 26 testes cobrem os tratamentos anteriores e a divisão: tamanhos, estratificação, cobertura, ausência de clientes compartilhados, reordenação da entrada, classes insuficientes, separação de X/y/metadados e repetição do fluxo. Um teste altera valores da avaliação e confirma que a preparação do treino não muda. As exportações são simuladas nos testes do fluxo; nenhuma mediana ou moda é calculada.
 
 Os comentários seguem um padrão curto: a descrição da função informa sua finalidade; comentários antes de blocos explicam decisões como preservação do índice, janelas, ausências e conferências. Funções simples mantêm somente sua descrição. Os comentários não acrescentam regras de tratamento.
 
@@ -291,7 +342,7 @@ Os comentários seguem um padrão curto: a descrição da função informa sua f
 
 - Definir o tratamento estatístico das ausências originais e das geradas por invalidação. Tipos, faixas, de-para e isolamento dos inválidos já estão implementados.
 - Investigar redundância e ruído e preparar codificação e escala adequadas a cada tarefa.
-- Definir o isolamento dos conjuntos de avaliação antes da EDA e das transformações aprendidas. Imputação, escala e codificação aprendida serão ajustadas somente no treino.
+- Realizar EDA e decidir os parâmetros estatísticos usando somente o treino. Os três conjuntos já estão isolados; imputação, escala e codificação ainda serão ajustadas e persistidas.
 - A base atual tem uma fotografia temporal. Uma avaliação estritamente fora do tempo exige fotografias de outras datas; isso não é obtido simplesmente separando clientes desta mesma fotografia.
 - A Aula 3 utiliza uma VF3 e tamanhos próprios do exemplo. Seus totais e métricas não são metas a copiar para a VF2 após os filtros deste projeto.
 - Preparar os atributos adequados a cada tarefa, separar alvo e metadados e só então avançar para modelagem.
