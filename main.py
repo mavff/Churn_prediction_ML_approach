@@ -1,8 +1,12 @@
 from pathlib import Path
 
-from preparacao_dados import definir_protocolo_temporal, ler_base_excel
+from preparacao_dados import definir_protocolo_atributos, definir_protocolo_temporal, ler_base_excel
 from preparacao_dados.divisao import definir_protocolo_divisao, dividir_conjuntos
-from preparacao_dados.fluxos import construir_visao_analitica, preparar_conjuntos, exportar_resultados
+from preparacao_dados.fluxos import (
+    construir_visao_analitica, preparar_conjuntos, imputar_conjuntos,
+    selecionar_atributos, exportar_resultados,
+)
+from preparacao_dados.imputacao import definir_protocolo_imputacao
 
 
 def main() -> None:
@@ -10,6 +14,8 @@ def main() -> None:
     origem = pasta / "dados" / "base_churn_5000_VF2_aluno.xlsx"
     protocolo = definir_protocolo_temporal()
     protocolo_divisao = definir_protocolo_divisao()
+    protocolo_imputacao = definir_protocolo_imputacao()
+    protocolo_atributos = definir_protocolo_atributos()
     salvar_intermediarias = False
     dados = ler_base_excel(origem)
 
@@ -24,9 +30,17 @@ def main() -> None:
     preparados, qualidade = preparar_conjuntos(conjuntos, origem)
     diagnosticos.update(qualidade)
 
-    # 4. Registrar bases e diagnóstico usando os exportadores existentes.
+    # 4. Aprender a imputação somente no treino e aplicá-la aos três conjuntos.
+    preparados, imputacao = imputar_conjuntos(preparados, protocolo_imputacao, origem)
+    diagnosticos.update(imputacao)
+
+    # 5. Explorar o treino e retirar dos três conjuntos os atributos aprovados como irrelevantes.
+    preparados, atributos = selecionar_atributos(preparados, protocolo_atributos)
+    diagnosticos.update(atributos)
+
+    # 6. Registrar bases, diagnóstico e gráficos usando os exportadores existentes.
     exportar_resultados(
-        preparados, diagnosticos, protocolo, protocolo_divisao, pasta,
+        preparados, diagnosticos, protocolo, protocolo_divisao, protocolo_imputacao, protocolo_atributos, pasta,
         salvar_conjuntos=True, salvar_base_completa=True,
     )
 
