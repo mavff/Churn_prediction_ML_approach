@@ -23,4 +23,7 @@ def consolidar_diagnosticos_conjuntos(
             "resumo": resumo, "evidencias": evidencia,
             "regra": referencia["regra"], "decisao": referencia["decisao"],
         }
+        # A saída de cada conjunto segue junto, para gravar a etapa com uma aba por conjunto.
+        if "saida" in referencia:
+            consolidados[problema]["saida"] = {nome: resultados[problema]["saida"] for nome, resultados in resultados_por_conjunto.items()}
     return consolidados
