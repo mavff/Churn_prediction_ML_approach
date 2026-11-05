@@ -51,7 +51,7 @@ def exportar_resultados(
     abas = montar_abas_relatorio(ordenados, protocolo)
     exportar_relatorio_excel(abas, pasta_projeto / "relatorios" / "diagnostico_preparacao.xlsx", substituir_arquivo=True)
     # O treino legível traz também os campos retirados do X, para que a AED mostre todos os preditores.
-    exportar_graficos_aed(tabelas["treino"], pasta_projeto / "relatorios" / "graficos")
+    exportar_graficos_aed(tabelas["treino"], resultados, protocolos, pasta_projeto / "relatorios" / "graficos", caminho_origem)
     for nome, partes in conjuntos.items():
         modelagem = next(iter(partes["modelagem"].values())).shape[1] - 2
         print(f"{nome.capitalize()}: {len(partes['X'])} clientes | {partes['X'].shape[1]} preditores | {modelagem} colunas de modelagem")
