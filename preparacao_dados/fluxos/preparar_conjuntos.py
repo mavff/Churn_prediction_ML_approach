@@ -21,10 +21,14 @@ def preparar_conjuntos(
         resultados = {}
         categorias = identificar_categorias_fora_padrao(dados)
         tratados = padronizar_categorias(dados, categorias)
-        resultados["08_categorias"] = verificar_padronizacao_categorias(dados, tratados, categorias, caminho_origem)
+        resultados["09_categorias"] = {
+            **verificar_padronizacao_categorias(dados, tratados, categorias, caminho_origem), "saida": tratados,
+        }
         numericos = identificar_violacoes_numericas(tratados)
         depois = normalizar_valores_numericos(tratados, numericos)
-        resultados["09_numericos"] = verificar_normalizacao_numerica(tratados, depois, numericos, caminho_origem)
+        resultados["10_numericos"] = {
+            **verificar_normalizacao_numerica(tratados, depois, numericos, caminho_origem), "saida": depois,
+        }
         # O ajuste estatístico futuro receberá apenas preparados["treino"]["X"].
         preparados[nome] = separar_atributos_alvo(depois)
         diagnosticos[nome] = resultados

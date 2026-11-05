@@ -16,11 +16,14 @@ def imputar_conjuntos(
     diagnosticos = {}
     for nome, partes in preparados.items():
         X = aplicar_imputacao(partes["X"], ajuste)
-        diagnosticos[nome] = {
-            "11_imputacao": verificar_imputacao(
-                partes["X"], X, ajuste, partes["metadados"]["id_cliente"], protocolo["limiar_alerta_ausencia"], caminho_origem,
-            ),
-        }
         # Alvo, metadados e ordem das colunas seguem inalterados ao lado dos preditores imputados.
         imputados[nome] = {**partes, "X": X}
+        diagnosticos[nome] = {
+            "11_imputacao": {
+                **verificar_imputacao(
+                    partes["X"], X, ajuste, partes["metadados"]["id_cliente"], protocolo["limiar_alerta_ausencia"], caminho_origem,
+                ),
+                "saida": imputados[nome],
+            },
+        }
     return imputados, consolidar_diagnosticos_conjuntos(diagnosticos)

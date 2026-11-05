@@ -14,6 +14,6 @@ def selecionar_atributos(
     )
     selecionados = {nome: retirar_atributos_irrelevantes(partes, protocolo) for nome, partes in preparados.items()}
     return selecionados, {
-        "12_atributos": verificar_selecao_atributos(preparados, selecionados, avaliacao, protocolo),
+        "12_atributos": {**verificar_selecao_atributos(preparados, selecionados, avaliacao, protocolo), "saida": selecionados},
         "13_descritiva": descrever_atributos_treino(treino["X"], treino["y"]),
     }

@@ -35,4 +35,4 @@ def dividir_conjuntos(
     conjuntos = {nome: tabela.sort_index().copy() for nome, tabela in (
         ("treino", treino), ("validacao", validacao), ("teste", teste),
     )}
-    return conjuntos, verificar_divisao(visao, conjuntos, protocolo, caminho_origem)
+    return conjuntos, {**verificar_divisao(visao, conjuntos, protocolo, caminho_origem), "saida": conjuntos}
