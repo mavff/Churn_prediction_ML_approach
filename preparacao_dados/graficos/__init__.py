@@ -1,0 +1,15 @@
+"""Gráficos da AED: estilo comum e uma função por gráfico, sem alterar dados."""
+from .definir_estilo_graficos import definir_estilo_graficos
+from .calcular_information_value import calcular_information_value
+from .desenhar_funil_registros import desenhar_funil_registros
+from .desenhar_ausencias import desenhar_ausencias
+from .desenhar_churn_por_chamados import desenhar_churn_por_chamados
+from .desenhar_distribuicoes import desenhar_distribuicoes
+from .desenhar_violinos import desenhar_violinos
+from .desenhar_kde import desenhar_kde
+from .desenhar_correlacoes import desenhar_correlacoes
+from .desenhar_mensalidade_por_fibra import desenhar_mensalidade_por_fibra
+from .desenhar_ranking_associacao import desenhar_ranking_associacao
+from .desenhar_churn_por_categoria import desenhar_churn_por_categoria
+from .desenhar_churn_tempo_contrato import desenhar_churn_tempo_contrato
+from .desenhar_mapa_tempo_chamados import desenhar_mapa_tempo_chamados

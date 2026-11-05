@@ -138,15 +138,26 @@ As decisões ficam em `preparacao_dados/definir_protocolo_atributos.py` e são e
 
 A aba `13_descritiva` resume o treino imputado: média, desvio, quartis, assimetria e média por classe nas contagens e nos valores contínuos; frequência e taxa de churn por categoria e indicador binário. Por exemplo, o churn é de 46,6% no contrato mensal e de 17,5% no bienal; quem cancelou tinha em média 19,4 meses de casa e 2,25 chamados, contra 27,4 meses e 1,45 chamado de quem ficou.
 
-Três gráficos do treino são gravados em `relatorios/graficos/`:
+Doze gráficos são gravados em `relatorios/graficos/`, numerados na ordem de leitura. Cada um sustenta uma decisão ou responde a uma pergunta provável; os de distribuição seguem o que as análises de churn costumam mostrar (violino, densidade, taxa por coorte de tempo de casa e Information Value). O funil e as ausências usam a auditoria dos três conjuntos; os demais, só o treino.
 
-| Arquivo | Conteúdo |
-| --- | --- |
-| `correlacoes.png` | Matriz de Pearson entre numéricos, binários e churn |
-| `distribuicoes.png` | Distribuição de tempo, mensalidade, chamados e atrasos por classe de churn |
-| `churn_por_categoria.png` | Taxa de churn por contrato, pagamento, fibra e débito, com a média do treino |
+| Arquivo | O que mostra | Decisão ou pergunta que sustenta |
+| --- | --- | --- |
+| `01_funil_registros.png` | 5.020 → 5.000 → 4.990 → 4.976 linhas e a divisão 2.488 / 1.244 / 1.244 | Quantos clientes saíram e por quê |
+| `02_ausencias.png` | Ausência por campo e conjunto antes da imputação, com o limiar de 20% | Imputação e alerta do contrato de dados |
+| `03_churn_por_chamados.png` | Churn de "sem lista" (21,8%) ao lado de 1, 2, 3… chamados | Regra que transforma lista vazia em zero |
+| `04_distribuicoes.png` | Histogramas das quatro numéricas por classe | Forma das distribuições, piso de 49,90 e teto de 72 meses |
+| `05_violinos.png` | Violino com mediana e quartis por classe | Quem cancela tem menos tempo de casa e mais chamados |
+| `06_kde.png` | Densidade por classe, restrita à faixa observada | Onde as classes se separam |
+| `07_correlacoes.png` | Matriz de Pearson entre numéricos, binários e churn | Associações lineares e o par mensalidade × fibra |
+| `08_mensalidade_por_fibra.png` | Mensalidade com e sem fibra (medianas de R$ 65,48 e R$ 96,69) | Origem da redundância r = 0,84, mantida e registrada |
+| `09_ranking_associacao.png` | Correlação com churn por atributo e Information Value por campo | Retirada de `forma_pagamento` (IV 0,0004) e força dos demais |
+| `10_churn_por_categoria.png` | Taxa de churn por contrato, pagamento, fibra e débito | Contrato segmenta o risco; pagamento não |
+| `11_churn_tempo_contrato.png` | Churn por faixa de tempo de casa, uma linha por contrato | Risco cai com o tempo; mensal e novo é o pior segmento |
+| `12_mapa_tempo_chamados.png` | Churn em cada combinação de tempo de casa e chamados | Interação entre pouco tempo de casa e muitos chamados |
 
-Os gráficos incluem `forma_pagamento`, para mostrar a evidência da retirada. Usam o matplotlib, fixado em `requirements.txt`, e saem idênticos a cada execução.
+O Information Value (IV) mede a separação entre as classes a partir do WoE de cada faixa, como a Aula 3, p. 27, sugere para relações não lineares. No treino, contrato (0,33), chamados (0,31) e tempo de casa (0,30) ficam no limite de "forte"; atrasos (0,15) e mensalidade (0,10) são médios; fibra e débito, fracos; `forma_pagamento`, abaixo de 0,02, sem poder de separação. O IV só descreve os dados: nenhuma decisão do fluxo depende dele.
+
+Cada gráfico tem uma função própria em `preparacao_dados/graficos/`, com estilo comum e cores validadas para daltonismo. A pasta é recriada a cada execução, os gráficos saem idênticos a cada execução e nenhum deles altera dados. Usam o matplotlib, fixado em `requirements.txt`.
 
 ## Codificação e escalas
 
@@ -356,7 +367,8 @@ preparacao_dados/
 ├── montar_abas_relatorio.py              # montagem do relatório compacto
 ├── exportar_base_excel.py                # saída da base tratada legível
 ├── exportar_relatorio_excel.py           # escrita e formatação do Excel
-├── exportar_graficos_aed.py              # gráficos da AED do treino
+├── exportar_graficos_aed.py              # recria relatorios/graficos com os 12 gráficos
+├── graficos/                             # estilo comum, IV e uma função por gráfico
 ├── limpar_pasta_saidas.py                # apaga dados/tratados, protegendo a fonte
 ├── montar_tabelas_etapa.py               # abas do arquivo de cada etapa
 ├── apresentar_estrutura_base.py          # dimensões e colunas no terminal
@@ -451,7 +463,10 @@ Cada arquivo de implementação contém uma função. Os arquivos `__init__.py` 
 | Atributos | `descrever_atributos_treino` | Resumir posição, dispersão e taxa de churn por categoria no treino |
 | Atributos | `retirar_atributos_irrelevantes` | Tirar do X os campos aprovados e guardá-los nos metadados |
 | Atributos | `verificar_selecao_atributos` | Exigir evidência de irrelevância, conferir os três conjuntos e registrar a decisão de cada atributo |
-| Gráficos | `exportar_graficos_aed` | Gravar correlações, distribuições e churn por categoria do treino |
+| Gráficos | `exportar_graficos_aed` | Recriar a pasta de gráficos e gravar os 12, numerados na ordem de leitura |
+| Gráficos | `definir_estilo_graficos` e `estilizar_eixo` | Cores validadas, faixas de leitura e acabamento comum a todos os painéis |
+| Gráficos | `calcular_information_value` | WoE e IV por campo, com numéricas em faixas de quantis |
+| Gráficos | `desenhar_*` (12 funções) | Uma figura por gráfico, sem gravar nem alterar dados |
 | Codificação | `definir_protocolo_codificacao` | Derivar do dicionário se cada preditor é escalado, recebe one-hot ou fica em 0/1 |
 | Codificação | `ajustar_codificacao` | Aprender escala e one-hot somente no treino, para a escala pedida |
 | Codificação | `aplicar_codificacao` | Aplicar `transform` e nomear as colunas geradas |
@@ -473,7 +488,7 @@ Preserve o índice original dos registros: `linha_excel = indice + 2`, considera
 python -m unittest discover -s tests -v
 ```
 
-Os 42 testes cobrem os tratamentos anteriores, a divisão, a imputação, a seleção de atributos, a AED, a codificação e a organização das saídas. Na divisão: tamanhos, estratificação, cobertura, ausência de clientes compartilhados, reordenação da entrada, classes insuficientes, separação de X/y/metadados e repetição do fluxo. Na imputação: mediana e moda aprendidas no treino, zero nos chamados, observados e tipos preservados, bloqueio de mediana fracionária, alerta de ausência acima de 20% e ajuste inalterado quando validação ou teste mudam. Na seleção: par redundante mantido, pagamento retirado e preservado nos metadados, bloqueio de retirada sem evidência, extremo, rótulo conflitante e estatística descritiva. Na codificação: média 0 e desvio 1 ou intervalo [0, 1] no treino, parâmetros do treino aplicados à validação, categoria nova como zeros e bloqueio de escala ajustada fora do treino. Nas saídas: abas de cada etapa, limpeza da pasta e proteção da fonte. Os gráficos e a limpeza usam pasta temporária nos testes; no teste do fluxo, as exportações são simuladas e conferem a ordem das etapas e o conteúdo das bases finais.
+Os 43 testes cobrem os tratamentos anteriores, a divisão, a imputação, a seleção de atributos, a AED, a codificação e a organização das saídas. Na divisão: tamanhos, estratificação, cobertura, ausência de clientes compartilhados, reordenação da entrada, classes insuficientes, separação de X/y/metadados e repetição do fluxo. Na imputação: mediana e moda aprendidas no treino, zero nos chamados, observados e tipos preservados, bloqueio de mediana fracionária, alerta de ausência acima de 20% e ajuste inalterado quando validação ou teste mudam. Na seleção: par redundante mantido, pagamento retirado e preservado nos metadados, bloqueio de retirada sem evidência, extremo, rótulo conflitante e estatística descritiva. Na codificação: média 0 e desvio 1 ou intervalo [0, 1] no treino, parâmetros do treino aplicados à validação, categoria nova como zeros e bloqueio de escala ajustada fora do treino. Nas saídas: abas de cada etapa, limpeza da pasta e proteção da fonte. Nos gráficos: os 12 arquivos numerados, a remoção de gráficos antigos e o IV separando um atributo forte de um irrelevante. Os gráficos e a limpeza usam pasta temporária nos testes; no teste do fluxo, as exportações são simuladas e conferem a ordem das etapas e o conteúdo das bases finais.
 
 Os comentários seguem um padrão curto: a descrição da função informa sua finalidade; comentários antes de blocos explicam decisões como preservação do índice, janelas, ausências e conferências. Funções simples mantêm somente sua descrição. Os comentários não acrescentam regras de tratamento.
 
